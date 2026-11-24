@@ -1,0 +1,687 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Veteran Transition &amp; Housing Readiness Navigator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=Public+Sans:wght@400;500;600;700;800&display=swap">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<style>
+/* Layout concept: a caseworker's intake folder. Navy header band, numbered folder tabs, one white work card per step. Gold marks cautions and the primary action; emerald marks progress. */
+:root{
+  --bg:#EDF1F6; --surface:#FFFFFF; --surface-2:#F4F6FA; --ink:#0B1F3A; --muted:#455468; --line:#C9D3E0;
+  --navy:#0F2A4A; --navy-ink:#FFFFFF; --navy-sub:#C5D3E6; --btn-ink:#0F2A4A;
+  --gold:#F2C14E; --on-gold:#0B1F3A; --gold-ink:#6B4500; --gold-soft:#FBF0CF;
+  --emerald:#047857; --emerald-ink:#065F46; --emerald-soft:#D6F3E5;
+  --warn:#B45309; --warn-ink:#8A3E06; --warn-soft:#FDEBD3;
+  --crit:#B91C1C; --crit-ink:#991B1B; --crit-soft:#FCE3E3;
+  --focus:#1D4ED8; color-scheme:light;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#08121F; --surface:#0F2038; --surface-2:#132A47; --ink:#E7EEF8; --muted:#A9B8CC; --line:#2C4668;
+  --navy:#14355F; --navy-ink:#FFFFFF; --navy-sub:#C5D3E6; --btn-ink:#E7EEF8;
+  --gold:#F2C14E; --on-gold:#0B1F3A; --gold-ink:#F6D783; --gold-soft:#3A2E10;
+  --emerald:#34D399; --emerald-ink:#6EE7B7; --emerald-soft:#0F3A2C;
+  --warn:#F59E0B; --warn-ink:#FBC57A; --warn-soft:#3D2A0D;
+  --crit:#F87171; --crit-ink:#FCA5A5; --crit-soft:#401818;
+  --focus:#93C5FD; color-scheme:dark;}}
+:root[data-theme="dark"]{
+  --bg:#08121F; --surface:#0F2038; --surface-2:#132A47; --ink:#E7EEF8; --muted:#A9B8CC; --line:#2C4668;
+  --navy:#14355F; --navy-ink:#FFFFFF; --navy-sub:#C5D3E6; --btn-ink:#E7EEF8;
+  --gold:#F2C14E; --on-gold:#0B1F3A; --gold-ink:#F6D783; --gold-soft:#3A2E10;
+  --emerald:#34D399; --emerald-ink:#6EE7B7; --emerald-soft:#0F3A2C;
+  --warn:#F59E0B; --warn-ink:#FBC57A; --warn-soft:#3D2A0D;
+  --crit:#F87171; --crit-ink:#FCA5A5; --crit-soft:#401818;
+  --focus:#93C5FD; color-scheme:dark;}
+html,body{margin:0}
+body{background:var(--bg);color:var(--ink);font-family:'Public Sans',system-ui,-apple-system,'Segoe UI',Roboto,sans-serif;font-size:16px;line-height:1.5;-webkit-text-size-adjust:100%}
+*:focus-visible{outline:3px solid var(--focus);outline-offset:2px}
+.gut{padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+.band{background:var(--navy);color:var(--navy-ink);margin-top:calc(-1 * env(safe-area-inset-top,0px));padding-top:calc(env(safe-area-inset-top,0px) + 1.5rem);padding-bottom:1.5rem}
+.eyebrow{font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace;font-size:.72rem;letter-spacing:.08em;text-transform:uppercase}
+.mono{font-family:'IBM Plex Mono',ui-monospace,Menlo,monospace}
+.muted{color:var(--muted)}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:.75rem}
+.card-2{background:var(--surface-2);border:1px solid var(--line);border-radius:.6rem}
+.h2{font-size:1.25rem;font-weight:800;line-height:1.25;text-wrap:balance}
+.h3{font-size:1rem;font-weight:700;line-height:1.3;text-wrap:balance}
+.lg{font-weight:700;font-size:.95rem;padding:0;margin-bottom:.25rem}
+.help{font-size:.85rem;color:var(--muted);margin:0 0 .5rem}
+.grp{border:0;padding:0;margin:0;min-width:0}
+.lnk{color:var(--emerald-ink);text-decoration:underline;text-underline-offset:2px;font-weight:600}
+.privacy{background:var(--gold-soft);border:2px solid var(--gold);border-radius:.75rem;color:var(--ink)}
+.privacy .k{color:var(--gold-ink)}
+.crit-box{background:var(--crit-soft);border:2px solid var(--crit);border-radius:.75rem;color:var(--ink)}
+.chip{display:inline-flex;align-items:center;gap:.35rem;font-size:.75rem;font-weight:700;padding:.2rem .65rem;border-radius:999px;border:1px solid transparent;white-space:nowrap}
+.chip-emerald{background:var(--emerald-soft);color:var(--emerald-ink);border-color:var(--emerald)}
+.chip-gold{background:var(--gold-soft);color:var(--gold-ink);border-color:var(--gold)}
+.chip-warn{background:var(--warn-soft);color:var(--warn-ink);border-color:var(--warn)}
+.chip-crit{background:var(--crit-soft);color:var(--crit-ink);border-color:var(--crit)}
+.chip-slate{background:var(--surface-2);color:var(--muted);border-color:var(--line)}
+.chip-navy{background:var(--navy);color:var(--navy-ink)}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:.5rem;min-height:44px;padding:.55rem 1rem;border-radius:.5rem;font-weight:700;font-size:.95rem;border:2px solid var(--btn-ink);background:var(--surface);color:var(--btn-ink);cursor:pointer;font-family:inherit}
+.btn:hover{background:var(--surface-2)}
+.btn-primary{background:var(--gold);border-color:var(--gold);color:var(--on-gold)}
+.btn-primary:hover{filter:brightness(.95);background:var(--gold)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.opt{position:relative;display:block}
+.opt>input{position:absolute;inset:0;width:100%;height:100%;margin:0;opacity:0;cursor:pointer;z-index:1}
+.opt>.face{position:relative;display:flex;flex-direction:column;gap:.1rem;height:100%;box-sizing:border-box;padding:.7rem 2rem .7rem .85rem;border:2px solid var(--line);border-radius:.6rem;background:var(--surface);color:var(--ink);transition:border-color .15s,background .15s}
+.opt>.face .t{font-weight:700;font-size:.95rem;line-height:1.3}
+.opt>.face .sub{font-size:.8rem;color:var(--muted);line-height:1.3}
+.opt>input:hover+.face{border-color:var(--muted)}
+.opt>input:checked+.face{background:var(--navy);border-color:var(--navy);color:var(--navy-ink)}
+.opt>input:checked+.face .sub{color:var(--navy-sub)}
+.opt>input:checked+.face::after{content:"\2713";position:absolute;top:.55rem;right:.75rem;font-weight:800;color:var(--gold)}
+.opt>input:focus-visible+.face{outline:3px solid var(--focus);outline-offset:2px}
+.opt>input:disabled{cursor:not-allowed}
+.opt>input:disabled+.face{opacity:.55}
+.field{width:100%;box-sizing:border-box;border:2px solid var(--line);border-radius:.5rem;background:var(--surface);color:var(--ink);padding:.6rem .75rem;font-size:1rem;font-family:inherit;min-height:44px}
+.money{display:flex;align-items:center;gap:.5rem}
+.money>span{font-weight:700;color:var(--muted)}
+.track{position:relative;height:.7rem;border-radius:999px;background:var(--line);overflow:hidden}
+.track.big{height:1.1rem}
+.bar{height:100%;border-radius:999px;transition:width .35s ease}
+.bar-emerald{background:var(--emerald)}.bar-gold{background:var(--gold)}.bar-warn{background:var(--warn)}.bar-crit{background:var(--crit)}
+.tabs{display:flex;gap:.25rem;overflow-x:auto;border-bottom:2px solid var(--line)}
+.tab{flex:1 0 auto;display:flex;align-items:center;gap:.6rem;padding:.7rem 1rem;border:0;border-bottom:4px solid transparent;background:transparent;color:var(--muted);font-weight:700;font-size:.92rem;cursor:pointer;font-family:inherit;text-align:left;margin-bottom:-2px}
+.tab[aria-selected="true"]{color:var(--ink);border-bottom-color:var(--gold);background:var(--surface)}
+.num{display:inline-grid;place-items:center;width:1.7rem;height:1.7rem;border-radius:50%;background:var(--surface-2);border:2px solid var(--line);font-size:.8rem;font-weight:800;flex:none}
+.tab[aria-selected="true"] .num{background:var(--navy);border-color:var(--navy);color:var(--navy-ink)}
+.num.ok{background:var(--emerald);border-color:var(--emerald);color:#fff}
+.scen{text-align:left;font-family:inherit;cursor:pointer;color:var(--ink);background:var(--surface);border:2px solid var(--line);border-radius:.75rem;padding:.85rem 1rem}
+.scen:hover{border-color:var(--muted)}
+.scen[aria-pressed="true"]{border-color:var(--navy);background:var(--surface-2);box-shadow:inset 0 0 0 1px var(--navy)}
+.row{display:flex;gap:.75rem;align-items:flex-start;padding:.75rem;border:1px solid var(--line);border-radius:.6rem;background:var(--surface);cursor:pointer}
+.row input[type=checkbox]{width:1.35rem;height:1.35rem;margin-top:.1rem;flex:none;accent-color:var(--emerald);cursor:pointer}
+.row.done{background:var(--surface-2)}
+.row.done .rt{text-decoration:line-through;color:var(--muted)}
+.rt{font-weight:600;line-height:1.35}
+.rw{font-size:.82rem;color:var(--muted);margin-top:.15rem}
+.flag{display:flex;gap:.6rem;align-items:flex-start;padding:.6rem .75rem;border-radius:.5rem;background:var(--warn-soft);color:var(--ink);border:1px solid var(--warn);font-size:.9rem}
+.flag b{color:var(--warn-ink)}
+.tick{position:absolute;top:0;bottom:0;width:2px;background:var(--surface)}
+textarea.mono{width:100%;box-sizing:border-box;border:2px solid var(--line);border-radius:.5rem;background:var(--surface-2);color:var(--ink);padding:.75rem;font-size:.8rem;line-height:1.55;resize:vertical}
+details>summary{cursor:pointer;font-weight:700}
+@media (prefers-reduced-motion: reduce){*{transition:none!important;animation:none!important}}
+</style>
+<div id="root"></div>
+<script>
+(function(){'use strict';
+/*LOGIC_START*/
+const DISCHARGE=[
+  {v:'honorable',t:'Honorable',s:'Broadest access to VA benefits'},
+  {v:'general',t:'General',s:'Under honorable conditions'},
+  {v:'other',t:'Other',s:'OTH, uncharacterized, or not sure'}];
+const RATING=[
+  {v:'0',t:'0%',s:'No rating, or rated 0%'},
+  {v:'10-40',t:'10–40%',s:'Partial rating'},
+  {v:'50-90',t:'50–90%',s:'Substantial rating'},
+  {v:'100',t:'100%',s:'Total rating'}];
+const STATES=[
+  {v:'California',t:'California'},{v:'Florida',t:'Florida'},{v:'Texas',t:'Texas'},{v:'Other',t:'Other state'}];
+const GOALS=[
+  {v:'purchase',t:'First-time home purchase',s:'Buy with a VA-backed loan'},
+  {v:'construction',t:'Single-close construction or land build',s:'One loan to build and finance'},
+  {v:'rental',t:'Rental assistance / HUD-VASH',s:'Vouchers and rapid rehousing'},
+  {v:'peer',t:'Peer support & career transition',s:'Peer specialist and federal hiring paths'}];
+const CREDIT=[
+  {v:'lt580',t:'Below 580'},{v:'580-619',t:'580–619'},{v:'620-679',t:'620–679'},{v:'680+',t:'680+'}];
+const VERIF=[
+  ['v1','DD Form 214 reviewed and discharge status confirmed'],
+  ['v2','VA Benefits Summary Letter reviewed (rating and monthly amount)'],
+  ['v3','Income, debts and credit checked against source documents'],
+  ['v4','Program eligibility confirmed with each program or lender'],
+  ['v5','Plan reviewed with the veteran and next steps agreed']];
+const ST={
+  likely:{t:'Likely fit',tone:'emerald',i:'✓',o:0},
+  possible:{t:'Possible fit',tone:'gold',i:'◐',o:1},
+  review:{t:'Needs review',tone:'warn',i:'!',o:2},
+  notfocus:{t:'Not your stated goal',tone:'slate',i:'–',o:3}};
+const WEIGHTS={
+  purchase:{elig:.25,ben:.10,cred:.25,aff:.25,cash:.15},
+  construction:{elig:.20,ben:.10,cred:.25,aff:.25,cash:.20},
+  rental:{elig:.35,ben:.20,cred:.10,aff:.20,cash:.15},
+  peer:{elig:.30,ben:.25,cred:.10,aff:.15,cash:.20}};
+const DIMS={
+  elig:'Eligibility & service status',ben:'Benefits leverage (disability rating)',cred:'Credit readiness',
+  aff:'Affordability (debt-to-income)',cash:'Cash & assistance'};
+const SC=[
+  {id:'a',title:'Ready Buyer',tag:'Florida · Home purchase',
+   blurb:'Army veteran separated this year, 30% rating, steady job, wants a first home.',
+   pf:{discharge:'honorable',rating:'10-40',state:'Florida',goal:'purchase'},
+   fin:{credit:'620-679',income:'4200',vaOn:true,vaAmt:'650',debt:'650',savings:'3000',assist:{vaZero:true,dpa:true,calvet:false}}},
+  {id:'b',title:'Land & Build',tag:'California · Construction',
+   blurb:'Marine Corps veteran, 60% rating, wants to build on land in California. Debts run high.',
+   pf:{discharge:'honorable',rating:'50-90',state:'California',goal:'construction'},
+   fin:{credit:'620-679',income:'3800',vaOn:true,vaAmt:'1800',debt:'2900',savings:'9000',assist:{vaZero:false,dpa:false,calvet:true}}},
+  {id:'c',title:'Housing Crisis',tag:'Texas · Rental assistance',
+   blurb:'Air Force veteran with an other-than-honorable discharge, staying with friends, low income.',
+   pf:{discharge:'other',rating:'0',state:'Texas',goal:'rental'},
+   fin:{credit:'lt580',income:'1400',vaOn:false,vaAmt:'',debt:'650',savings:'0',assist:{vaZero:false,dpa:false,calvet:false}}}];
+const BLANK_PF={discharge:null,rating:null,state:null,goal:null};
+const BLANK_FIN={credit:null,income:'',vaOn:false,vaAmt:'',debt:'',savings:'',assist:{vaZero:false,dpa:false,calvet:false}};
+
+const clone=o=>JSON.parse(JSON.stringify(o));
+const num=v=>{const n=parseFloat(String(v==null?'':v).replace(/[^0-9.]/g,''));return isFinite(n)&&n>0?n:0;};
+const money=n=>'$'+Math.round(n).toLocaleString('en-US');
+const lab=(L,v)=>{const o=L.find(x=>x.v===v);return o?o.t:'';};
+const isOwn=g=>g==='purchase'||g==='construction';
+
+function bandOf(s){
+  if(s>=80)return{k:'ready',tone:'emerald',label:'Ready to engage programs'};
+  if(s>=60)return{k:'near',tone:'gold',label:'Near-ready: a few gaps to close'};
+  if(s>=40)return{k:'build',tone:'warn',label:'Building: focus on the priority gaps'};
+  return{k:'found',tone:'crit',label:'Foundation first: stabilize and gather documents'};
+}
+
+function calc(pf,fin){
+  const base=num(fin.income),va=fin.vaOn?num(fin.vaAmt):0;
+  const qual=base+va*1.25,debt=num(fin.debt),sav=num(fin.savings);
+  const dti=qual>0?debt/qual*100:null;
+  const pct={
+    elig:{honorable:1,general:.8,other:.35}[pf.discharge],
+    ben:{'0':.2,'10-40':.5,'50-90':.8,'100':1}[pf.rating],
+    cred:{lt580:.2,'580-619':.5,'620-679':.75,'680+':1}[fin.credit],
+    aff:dti===null?0:dti<=36?1:dti<=41?.85:dti<=50?.5:.2,
+    cash:Math.min(1,(sav>=5000?.3:sav>=2000?.2:sav>0?.1:0)+(fin.assist.vaZero?.4:0)+((fin.assist.dpa||(fin.assist.calvet&&pf.state==='California'))?.3:0))};
+  const W=WEIGHTS[pf.goal];
+  const notes={
+    elig:lab(DISCHARGE,pf.discharge)+' discharge',
+    ben:'Rating '+lab(RATING,pf.rating),
+    cred:'Credit tier '+lab(CREDIT,fin.credit),
+    aff:dti===null?'No income entered':'About '+Math.round(dti)+'% of qualifying income (benchmark 41%)',
+    cash:(sav>0?money(sav)+' saved':'No savings entered')+(fin.assist.vaZero?', VA 0% down':'')+((fin.assist.dpa||(fin.assist.calvet&&pf.state==='California'))?', state help':'')};
+  const dims=Object.keys(DIMS).map(k=>({key:k,label:DIMS[k],pct:pct[k],w:W[k],pts:pct[k]*W[k]*100,max:W[k]*100,note:notes[k]}));
+  const score=Math.round(dims.reduce((s,d)=>s+d.pts,0));
+  let lever=dims.slice().sort((a,b)=>b.w*(1-b.pct)-a.w*(1-a.pct))[0];
+  const tips={
+    elig:'Confirm discharge status. A VA determination or a discharge review can open more programs.',
+    ben:'Ask an accredited Veterans Service Officer whether a new or increased disability claim is appropriate.',
+    cred:'Credit is the biggest lever. Fix report errors, lower card balances, and avoid new accounts.',
+    aff:dti===null?'Enter income so affordability can be scored.':'Lower monthly debt or document more income to reach a 41% ratio.',
+    cash:'Look into down payment help and your VA 0%-down entitlement to strengthen cash position.'};
+  const leverTxt=lever.w*(1-lever.pct)<.03?'No large gaps. Keep documents current and re-check before applying.':tips[lever.key];
+  const flags=[];
+  if(pf.discharge==='other')flags.push('Discharge status is Other. VA program eligibility depends on a character-of-discharge decision, so do not tell the veteran they are eligible or ineligible.');
+  if(pf.discharge==='general')flags.push('General discharge: most VA benefits stay open, but confirm on the COE or an eligibility letter.');
+  if(pf.rating==='0'&&fin.vaOn)flags.push('VA compensation income is entered but the rating is 0%. Check the Benefits Summary Letter.');
+  if(fin.vaOn&&va===0)flags.push('The tax-free VA compensation toggle is on but no amount is entered.');
+  if(dti===null)flags.push('No income entered, so affordability scores zero.');
+  else if(dti>50)flags.push('Debt-to-income is about '+Math.round(dti)+'%, well above the 41% benchmark. Most lenders will not approve at this level.');
+  else if(dti>41)flags.push('Debt-to-income is about '+Math.round(dti)+'%, above the 41% VA benchmark lenders often start from.');
+  if(fin.credit==='lt580'&&isOwn(pf.goal))flags.push('Most lenders look for about 620 or higher. Plan credit repair before applying.');
+  if(pf.goal==='construction'&&(fin.credit==='lt580'||fin.credit==='580-619'))flags.push('Construction financing usually has stricter credit and reserve rules than a standard purchase.');
+  if(fin.assist.calvet&&pf.state!=='California')flags.push('CalVet is selected but the target state is not California. The score ignores it.');
+  if(fin.assist.vaZero&&pf.discharge==='other')flags.push('VA 0%-down is marked, but discharge status needs review first.');
+  return{qual,debt,dti,sav,dims,score,band:bandOf(score),lever,leverTxt,flags,va};
+}
+
+function programs(pf,fin,c){
+  const out=[],g=pf.goal,own=isOwn(g),oth=pf.discharge==='other',rent=g==='rental',peer=g==='peer',r=pf.rating;
+  const nf=['Not tied to your stated goal.'];
+  {
+    let status='notfocus',why=['Your goal is not buying or building, but your loan entitlement stays available for later.'],next='Revisit if your goal changes.';
+    if(own){
+      status=oth?'review':fin.credit==='lt580'?'possible':'likely';
+      why=[pf.discharge==='honorable'?'An honorable discharge is the strongest basis for VA loan entitlement.':pf.discharge==='general'?'A general discharge usually keeps loan entitlement, but the VA decides on the COE.':'Discharge status must be reviewed by the VA before entitlement is confirmed.'];
+      if(fin.credit==='lt580')why.push('The VA sets no minimum score, but most lenders look for about 620 or higher.');
+      if(r!=='0')why.push('A service-connected rating of 10% or more generally exempts you from the VA funding fee.');
+      if(g==='construction')why.push('The VA does not lend directly for construction. Ask lenders about construction-to-permanent loans that use VA backing.');
+      next='Request the Certificate of Eligibility (COE), then compare lenders with VA loan experience.';
+    }
+    out.push({id:'valoan',name:'VA Home Loan',status,why,next,src:['VA home loans','https://www.va.gov/housing-assistance/home-loans/']});
+  }
+  {
+    let name,src,status='notfocus',why=nf,next='Revisit if your goal changes.';
+    if(pf.state==='California'){name='CalVet Home Loan, including single-close construction';src=['CalVet','https://www.calvet.ca.gov/'];
+      if(own){status=oth?'review':g==='construction'?'likely':'possible';
+        why=['California veterans may qualify for CalVet financing under the program’s own service and residency rules.'];
+        if(g==='construction')why.push('You chose a build goal. Ask CalVet about its single-close construction option and confirm current terms.');
+        if(fin.assist.calvet)why.push('You marked CalVet as an assistance source.');
+        next='Contact CalVet to confirm eligibility, current rates and construction terms.';}}
+    else if(pf.state==='Florida'){name='Florida Housing: Hometown Heroes and down payment help';src=['Florida Housing','https://www.floridahousing.org/'];
+      if(own){status='review';why=['Florida Housing runs down payment programs with occupation, income and price limits.','Check whether your employer and household income fit the current rules.'];next='Review the current program list and lender requirements.';}}
+    else if(pf.state==='Texas'){name='Texas Veterans Land Board and TSAHC programs';src=['Texas VLB','https://vlb.texas.gov/'];
+      if(own){status=oth?'review':'possible';why=['Texas offers veteran land and home loans through the VLB and homebuyer help through TSAHC.','Each program has residency and service rules.'];next='Confirm eligibility and current terms with the VLB or a participating lender.';}}
+    else{name='State veteran and housing-finance programs';src=['VA.gov','https://www.va.gov/'];
+      if(own){status='review';why=['Most states run a veterans affairs office and a housing finance agency with down payment help.'];next='Search your state veterans affairs office and housing finance agency.';}}
+    out.push({id:'state',name,status,why,next,src});
+  }
+  out.push({id:'vash',name:'HUD-VASH housing vouchers',status:rent?(oth?'review':'possible'):'notfocus',
+    why:rent?['HUD-VASH pairs a housing voucher with VA case management for veterans who are homeless or at risk.','You must be eligible for VA health care, and referrals come through a VA medical center.'].concat(oth?['Your discharge status needs review before VA health care eligibility is confirmed.']:[]):nf,
+    next:rent?'Call 1-877-424-3838 or contact the local VA medical center homeless program for screening.':'Revisit if your goal changes.',
+    src:['VA homeless programs','https://www.va.gov/homeless/']});
+  out.push({id:'ssvf',name:'SSVF rapid rehousing',status:rent?(oth?'review':'possible'):'notfocus',
+    why:rent?['Supportive Services for Veteran Families offers rapid rehousing and prevention help through local nonprofit grantees.','Households generally must be homeless or at risk, with low income (often under 50% of area median).']:nf,
+    next:rent?'Find the nearest SSVF provider and ask about a screening appointment.':'Revisit if your goal changes.',
+    src:['SSVF at VA.gov','https://www.va.gov/homeless/ssvf/']});
+  out.push({id:'peer',name:'VA Peer Support Specialist pathway',status:peer?(oth?'review':'likely'):'notfocus',
+    why:peer?['VA Peer Support Specialists are Veterans who use lived experience to support other Veterans in VA care.','Typical requirements include veteran status, peer support training and certification. Confirm on the job posting.']:nf,
+    next:peer?'Search USAJOBS for peer support specialist roles and ask your state about certification training.':'Revisit if your goal changes.',
+    src:['USAJOBS','https://www.usajobs.gov/']});
+  {
+    const status=r==='0'?(peer?'review':'notfocus'):(peer?'likely':'possible');
+    let why;
+    if(r==='0')why=['Schedule A requires documentation of a disability. With a 0% rating, ask which other records, such as a provider letter, could serve.'];
+    else{why=['Schedule A lets federal agencies hire people with disabilities without a full competitive process.','Your VA letter can often serve as the disability documentation. Confirm with the hiring agency.'];
+      why.push(r==='10-40'?'If your rating is 30% or higher, the 30% or more disabled veteran appointing authority may also apply.':'At 30% or higher you may also qualify for the 30% or more disabled veteran appointing authority.');}
+    out.push({id:'scha',name:'Schedule A federal hiring',status,why:status==='notfocus'?nf:why,
+      next:r==='0'?'Ask your caseworker what disability documentation exists.':'Get a current disability letter, then search USAJOBS for Schedule A roles.',
+      src:['OPM','https://www.opm.gov/']});
+  }
+  return out.sort((a,b)=>ST[a.status].o-ST[b.status].o);
+}
+
+function plan(pf,fin,c){
+  const P={d30:[],d60:[],d90:[]},g=pf.goal,own=isOwn(g),rent=g==='rental',peer=g==='peer';
+  const rated=pf.rating!=='0',lowCredit=fin.credit==='lt580'||fin.credit==='580-619',ready=c.score>=60;
+  const add=(ph,id,pr,t,why)=>P[ph].push({id,pr,t,why});
+  add('d30','meet',1,'Meet your caseworker to review this plan and confirm every entry','Everything here is self-reported. Your caseworker checks it against your documents before anyone acts on it.');
+  add('d30','dd214',1,'Locate your DD Form 214 (Member-4 copy)','It proves service dates and discharge status, and every VA program asks for it. If it is lost, request a copy from the National Archives (SF-180 or eVetRecs).');
+  add('d30','letter',1,'Download your VA Benefits Summary Letter from VA.gov',rated?'It shows your rating and monthly compensation. Lenders, landlords and agencies accept it as proof of disability and income.':'It confirms your service and benefit status. Lenders and landlords often ask for it.');
+  if(own)add('d30','coe',1,'Request your VA Certificate of Eligibility (COE)','The COE confirms your loan entitlement. Request it on VA.gov, through a lender, or by mail with VA Form 26-1880.');
+  if(pf.discharge==='other')add('d30','dcr',1,'Ask about a character-of-discharge review or a discharge upgrade','Program eligibility depends on discharge status. A VA determination or a Discharge Review Board application can change what is open to you.');
+  if(pf.discharge==='general')add('d30','dgen',2,'Confirm what a General discharge means for your goal','Most VA benefits remain available, but the VA makes the final call. Ask for it in writing on your COE or an eligibility letter.');
+  if(rent)add('d30','call',1,'Call the National Call Center for Homeless Veterans: 1-877-424-3838','It is staffed around the clock and can connect you to your local VA homeless program, HUD-VASH and SSVF providers.');
+  if(rent||peer)add('d30','vahc',rent?1:2,'Confirm VA health care enrollment (VA Form 10-10EZ)',rent?'HUD-VASH requires eligibility for VA health care.':'Peer support roles and many VA programs connect through VA care.');
+  add('d30','credit',lowCredit?1:2,'Pull your free credit reports and check for errors','Use annualcreditreport.com, the official free site. Dispute anything wrong. Errors are common and fixing them can move your score tier.');
+  add('d30','budget',c.dti!==null&&c.dti>41?1:2,'List every monthly debt payment and write a one-page budget',c.dti===null?'Add your income on step 2 so the debt-to-income ratio can be calculated.':'Your debt-to-income ratio is about '+Math.round(c.dti)+'%. A clear budget shows where it can come down.');
+  if(peer)add('d30','peerq',2,'Ask a VA or nonprofit peer support program what training it requires','Requirements differ by state and employer. Get the current list before you enroll.');
+  if(own||lowCredit)add('d60','hc',2,'Meet with a HUD-approved housing counselor','Counseling is free or low-cost. A counselor can review your budget, credit and loan options and explain down payment help.');
+  if(lowCredit)add('d60','credplan',1,'Start a credit-rebuilding plan','Dispute errors, keep card balances under about 30% of their limits, pay on time, and avoid new accounts while you rebuild.');
+  if(c.dti!==null&&c.dti>41){const need=Math.max(0,Math.round(c.debt-0.41*c.qual));
+    add('d60','dti',1,'Bring monthly debt down to a 41% debt-to-income ratio','You would need about '+money(need)+' less in monthly payments, or more documented income. Ask a counselor which debts to tackle first.');}
+  if(own){const T={California:'Check CalVet and CalHFA down payment options',Florida:'Check Florida Housing programs, including Hometown Heroes',Texas:'Check Texas VLB and TSAHC programs',Other:'Search your state housing finance agency and veterans affairs office'};
+    add('d60','dpa',2,T[pf.state],'Rules, income limits and funding change often. Confirm current terms directly with the program.');}
+  if(g==='purchase')add('d60','lenders',ready?1:2,'Talk to two or three lenders with VA loan experience','Compare rates, fees and what each needs from you. '+(rated?'Ask each to show that your VA funding fee is waived.':'Ask each to itemize the VA funding fee.'));
+  if(g==='construction'){
+    add('d60','cons',1,'Ask lenders about single-close construction-to-permanent loans for veterans','Availability varies. The VA does not lend directly for construction, so ask about lender and state options'+(pf.state==='California'?', including CalVet.':'.'));
+    add('d60','site',2,'Collect lot details and a builder’s itemized budget','Lenders need plans, a cost estimate and builder information. Share parcel details with the lender, not in this tool.');}
+  if(rent)add('d60','screen',1,'Complete HUD-VASH and SSVF screening with your local VA or SSVF provider','Bring your DD Form 214, ID and proof of income. Ask each program which documents it needs.');
+  if(rated)add('d60','scha',peer?1:3,'Get disability documentation and review Schedule A federal hiring','Schedule A needs a disability letter. Your VA letter may serve, and at 30% or higher you may also use the 30% or more disabled veteran authority.');
+  if(peer){add('d60','train',1,'Enroll in a peer support specialist training and certification program','VA peer roles typically require it. Confirm the current requirement on the job posting.');
+    add('d60','usajobs',2,'Build a USAJOBS profile and resume, then save a search for peer support roles','Federal resumes follow specific rules. Your caseworker or a veteran employment representative can review yours.');}
+  if(g==='purchase'){add('d90','pre',ready?1:3,ready?'Get a written pre-approval letter and set a price ceiling':'Hold the pre-approval until credit and debt targets are met',ready?'A pre-approval shows sellers you are serious and fixes a budget before you shop.':'Applying too early can cost a hard credit inquiry without a likely approval.');
+    if(ready)add('d90','search',2,'Start touring homes within your approved budget','Ask your agent about VA loan experience and VA appraisal requirements.');}
+  if(g==='construction')add('d90','build',ready?1:3,ready?'Choose a builder and lender, and confirm single-close terms in writing':'Wait on builder contracts until financing looks likely',ready?'Get the loan terms, draw schedule and fees in writing before you sign a construction contract.':'A signed construction contract without committed financing puts your deposit at risk.');
+  if(rent)add('d90','house',1,'Prepare for the housing search with your voucher or program paperwork','Gather landlord references, ID and program approval letters so you can move quickly when units open.');
+  if(peer)add('d90','apply',1,'Submit applications and line up interviews','Apply to open peer support and related roles, and practice interviews with your caseworker or a veteran employment representative.');
+  add('d90','rescore',1,'Re-run this navigator with your caseworker and compare your score','Update the inputs with verified numbers. A higher score means the gaps above are closing.');
+  add('d90','verify',1,'Have the caseworker confirm eligibility with each program or lender','Programs and rules change. Use the official sources listed on the Readiness tab.');
+  Object.keys(P).forEach(k=>P[k].sort((a,b)=>a.pr-b.pr));
+  return P;
+}
+
+function redact(text){
+  let n=0;const hit=()=>{n++;return'[REDACTED]';};
+  const out=String(text||'')
+    .replace(/\b\d{3}[- ]?\d{2}[- ]?\d{4}\b/g,hit)
+    .replace(/\b[Cc]-?\d{7,9}\b/g,hit)
+    .replace(/\b\d{8,10}\b/g,hit)
+    .replace(/[\w.+-]+@[\w-]+\.[\w.]+/g,hit)
+    .replace(/\(?\b\d{3}\)?[-. ]\d{3}[-. ]\d{4}\b/g,hit)
+    .replace(/\b\d{1,6}\s+(?:[A-Za-z0-9.'-]+\s+){1,4}(?:Street|St|Avenue|Ave|Road|Rd|Boulevard|Blvd|Drive|Dr|Lane|Ln|Court|Ct|Way|Place|Pl|Circle|Cir|Highway|Hwy)\b\.?/gi,hit);
+  return{text:out,count:n};
+}
+
+function buildSummary(x){
+  const{pf,fin,c,progs,pl,done,verif,notes,demo,date}=x;
+  const L=[],add=s=>L.push(s===undefined?'':s),rule='='.repeat(60);
+  const phases=[['d30','DAYS 1-30: Documents and eligibility'],['d60','DAYS 31-60: Build readiness'],['d90','DAYS 61-90: Act and review']];
+  const vcount=VERIF.filter(v=>verif[v[0]]).length;
+  const rn=redact(notes);
+  add(rule);add('VETERAN TRANSITION & HOUSING READINESS NAVIGATOR');add('CASEWORKER HANDOFF SUMMARY (PII-REDACTED)');add(rule);add();
+  add('*** HUMAN CASEWORKER VERIFICATION REQUIRED ***');
+  add('This is a self-reported screening aid, not an eligibility determination, loan decision or benefits ruling. Nothing below has been verified against documents. A human caseworker must confirm every item with the veteran, the VA and each program or lender before anyone acts on it.');
+  add();
+  add('Date generated: '+date);
+  add('Case ID: [REDACTED - assign in case-management system]');
+  add('Veteran name: [REDACTED - not collected]');
+  add('SSN / VA file number: [NOT COLLECTED]');
+  add('Street address: [NOT COLLECTED - state only: '+pf.state+']');
+  add('Data source: '+(demo?'DEMO SCENARIO - sample data, not a real veteran':'Self-reported intake selections'));
+  add();add('1. TRANSITION PROFILE');
+  add('- Discharge status: '+lab(DISCHARGE,pf.discharge));
+  add('- Service-connected disability rating: '+lab(RATING,pf.rating));
+  add('- Target state: '+pf.state);
+  add('- Primary goal: '+lab(GOALS,pf.goal));
+  add();add('2. FINANCIAL INDICATORS (self-reported)');
+  add('- Estimated credit tier: '+lab(CREDIT,fin.credit));
+  add('- Monthly gross income, taxable: '+money(num(fin.income)));
+  add('- Tax-free VA compensation: '+(fin.vaOn?money(c.va)+' per month (grossed up 25% for qualifying income, illustrative)':'none reported'));
+  add('- Qualifying monthly income (illustrative): '+money(c.qual));
+  add('- Monthly debt payments: '+money(c.debt));
+  add('- Debt-to-income: '+(c.dti===null?'not calculated':Math.round(c.dti)+'% (41% VA benchmark; lenders vary)'));
+  add('- Savings for down payment: '+money(c.sav));
+  add('- Assistance noted: '+([fin.assist.vaZero&&'VA 0%-down entitlement',fin.assist.dpa&&'state down payment assistance',fin.assist.calvet&&'CalVet'].filter(Boolean).join(', ')||'none'));
+  add();add('3. READINESS SCORE: '+c.score+'/100 - '+c.band.label);
+  c.dims.forEach(d=>add('- '+d.label+': '+d.pts.toFixed(1)+' of '+Math.round(d.max)+' ('+d.note+')'));
+  add('- Biggest lever: '+c.leverTxt);
+  add();add('4. FLAGS FOR REVIEW');
+  if(c.flags.length)c.flags.forEach(f=>add('- '+f));else add('- None raised by the tool. The caseworker still verifies.');
+  add();add('5. PROGRAMS TO SCREEN');
+  progs.filter(p=>p.status!=='notfocus').forEach(p=>add('- '+p.name+' ['+ST[p.status].t+']: '+p.next));
+  add('- Programs not tied to the stated goal: '+(progs.filter(p=>p.status==='notfocus').map(p=>p.name).join('; ')||'none'));
+  add();add('6. 30/60/90-DAY ACTION PLAN');
+  phases.forEach(ph=>{add(ph[1]);pl[ph[0]].forEach(i=>add('  ['+(done[i.id]?'x':' ')+'] '+i.t));});
+  add();add('7. CASEWORKER VERIFICATION CHECKLIST ('+vcount+' of '+VERIF.length+' attested)');
+  VERIF.forEach(v=>add('  ['+(verif[v[0]]?'x':' ')+'] '+v[1]+(verif[v[0]]?'':' - NOT YET VERIFIED')));
+  add();add('8. CASE NOTES (auto-redacted)');
+  add(rn.text.trim()||'(none)');
+  if(rn.count)add('Note: '+rn.count+' possible identifier(s) were redacted automatically.');
+  add();add(rule);add('*** HUMAN CASEWORKER VERIFICATION REQUIRED ***');
+  add('Verification status: '+vcount+' of '+VERIF.length+' checklist items attested. Program rules change often; confirm with VA.gov and each program.');
+  add(rule);
+  return L.join('\n');
+}
+/*LOGIC_END*/
+const {useState,useMemo,useRef,useEffect}=React;
+const e=React.createElement;
+const T=t=>(props,...kids)=>e(t,props,...kids);
+const div=T('div'),span=T('span'),p=T('p'),h1=T('h1'),h2=T('h2'),h3=T('h3'),ul=T('ul'),li=T('li'),button=T('button'),label=T('label'),input=T('input'),
+  textarea=T('textarea'),section=T('section'),header=T('header'),footer=T('footer'),main=T('main'),details=T('details'),summary=T('summary'),strong=T('strong'),
+  a=T('a'),fieldset=T('fieldset'),legend=T('legend'),table=T('table'),tr=T('tr'),td=T('td'),th=T('th'),tbody=T('tbody'),thead=T('thead');
+
+const Chip=(tone,text,icon)=>span({className:'chip chip-'+tone},icon?span({'aria-hidden':'true'},icon):null,text);
+const Bar=(pct,tone,name,big)=>div({className:'track'+(big?' big':''),role:'progressbar','aria-valuemin':0,'aria-valuemax':100,'aria-valuenow':Math.round(pct),'aria-label':name},
+  div({className:'bar bar-'+tone,style:{width:Math.max(pct>0?2:0,Math.min(100,pct))+'%'}}));
+const toneOf=pc=>pc>=.75?'emerald':pc>=.5?'gold':'warn';
+
+function Choice(o){
+  return fieldset({className:'grp'},
+    legend({className:'lg'},o.legend),
+    o.help?p({className:'help'},o.help):null,
+    div({className:'grid gap-2 '+(o.cols||'sm:grid-cols-2')},
+      ...o.options.map(op=>label({key:op.v,className:'opt'},
+        input({type:'radio',name:o.name,value:op.v,checked:o.value===op.v,onChange:()=>o.onChange(op.v)}),
+        div({className:'face'},span({className:'t'},op.t),op.s?span({className:'sub'},op.s):null)))));
+}
+function Check(o){
+  return label({className:'opt'},
+    input({type:'checkbox',checked:!!o.checked,disabled:!!o.disabled,onChange:ev=>o.onChange(ev.target.checked)}),
+    div({className:'face'},span({className:'t'},o.t),o.s?span({className:'sub'},o.s):null));
+}
+function Money(o){
+  return div({className:'flex flex-col gap-1'},
+    label({htmlFor:o.id,className:'lg'},o.label),
+    o.help?p({id:o.id+'-h',className:'help'},o.help):null,
+    div({className:'money'},span({'aria-hidden':'true'},'$'),
+      input({id:o.id,type:'number',inputMode:'numeric',min:0,step:50,value:o.value,placeholder:'0',className:'field','aria-describedby':o.help?o.id+'-h':undefined,onChange:ev=>o.onChange(ev.target.value)})));
+}
+
+function Header(S){
+  const c=S.c;
+  return header({className:'band'},div({className:'gut'},div({className:'mx-auto max-w-6xl flex flex-wrap items-end justify-between gap-4'},
+    div({className:'min-w-0',style:{flex:'1 1 22rem'}},
+      div({className:'eyebrow',style:{color:'var(--navy-sub)'}},'Veteran-serving nonprofit · Caseworker tool'),
+      h1({className:'text-3xl md:text-4xl font-extrabold',style:{lineHeight:1.12,marginTop:'.35rem',textWrap:'balance'}},'Veteran Transition & Housing Readiness Navigator'),
+      p({style:{color:'var(--navy-sub)',marginTop:'.6rem',maxWidth:'44rem'}},'Walk through four short steps with a veteran to see an indicative readiness score, programs worth screening, and a 30/60/90-day plan. A caseworker verifies everything before anyone acts on it.')),
+    div({className:'card',style:{background:'var(--surface)',color:'var(--ink)',padding:'.8rem 1rem',minWidth:'13rem'}},
+      div({className:'eyebrow muted'},'Live readiness score'),
+      div({className:'flex items-baseline gap-2'},
+        span({className:'text-4xl font-extrabold',style:{fontVariantNumeric:'tabular-nums'}},c?String(c.score):'—'),
+        span({className:'muted font-semibold'},'/ 100')),
+      c?Chip(c.band.tone,c.band.label.split(':')[0]):span({className:'text-sm muted'},'Complete steps 1 and 2')))));
+}
+
+function Privacy(){
+  return section({className:'privacy p-4','aria-labelledby':'priv-h',role:'note'},
+    div({className:'flex flex-wrap items-center gap-2'},
+      Chip('gold','Diligence','⚠'),
+      h2({id:'priv-h',className:'h3'},'Privacy check: enter intake selections only')),
+    p({style:{margin:'.5rem 0 0'}},
+      strong(null,'Do not enter real Social Security numbers, VA file or claim numbers, or full legal addresses. '),
+      'Use the choices and dollar amounts below. Nothing you enter is sent anywhere or saved, and closing this tab clears it. The case-notes box on step 4 redacts common identifiers automatically, but the best protection is not typing them.'));
+}
+
+function FourD(){
+  const items=[
+    ['Delegation','The tool sorts and does the arithmetic: scoring, program matching, checklist drafting. People decide eligibility, referrals and every next step with the veteran.'],
+    ['Description','Inputs are plain categories and dollar amounts. The score method and weights are shown on step 3, so nothing is hidden and nothing is learned from the veteran’s data.'],
+    ['Discernment','Every output is an indicator. Flags call out inconsistent entries and thin spots, and a caseworker weighs them against documents before relying on them.'],
+    ['Diligence','No identifiers are collected or stored, and no data leaves the browser. The handoff summary is redacted and carries a mandatory human-verification notice.']];
+  return details({className:'card p-4'},
+    summary({className:'h3'},'How this tool applies the 4D Framework (Delegation, Description, Discernment, Diligence)'),
+    div({className:'grid gap-3 sm:grid-cols-2 lg:grid-cols-4',style:{marginTop:'.9rem'}},
+      ...items.map(it=>div({key:it[0],className:'card-2 p-3'},div({className:'eyebrow',style:{color:'var(--emerald-ink)'}},it[0]),p({className:'text-sm',style:{margin:'.3rem 0 0'}},it[1])))));
+}
+
+function Scenarios(S){
+  return section({'aria-labelledby':'demo-h'},
+    div({className:'flex flex-wrap items-baseline justify-between gap-2',style:{marginBottom:'.6rem'}},
+      h2({id:'demo-h',className:'h2'},'1-Click Demo Scenarios'),
+      span({className:'text-sm muted'},'Sample profiles, not real veterans. Pick one, then edit any answer.')),
+    div({className:'grid gap-3 md:grid-cols-4'},
+      ...SC.map(s=>button({key:s.id,type:'button',className:'scen','aria-pressed':S.sid===s.id,onClick:()=>S.load(s)},
+        div({className:'eyebrow muted'},s.tag),
+        div({className:'h3',style:{marginTop:'.15rem'}},s.title),
+        div({className:'text-sm muted',style:{marginTop:'.25rem'}},s.blurb))),
+      button({type:'button',className:'scen','aria-pressed':S.sid==='blank',onClick:S.blank},
+        div({className:'eyebrow muted'},'Start fresh'),
+        div({className:'h3',style:{marginTop:'.15rem'}},'Blank intake'),
+        div({className:'text-sm muted',style:{marginTop:'.25rem'}},'Clear every answer and enter a new case.'))));
+}
+
+function ProfileTab(S){
+  const pf=S.pf;
+  return div({className:'flex flex-col gap-6'},
+    div(null,h2({className:'h2'},'Step 1. Transition profile'),p({className:'help',style:{marginTop:'.25rem'}},'Ask the veteran for these four answers. Pick the closest match; the caseworker confirms against documents later.')),
+    Choice({name:'discharge',legend:'Discharge status',help:'As shown on the DD Form 214. If the veteran is unsure, choose Other.',value:pf.discharge,options:DISCHARGE,cols:'sm:grid-cols-3',onChange:v=>S.upPf('discharge',v)}),
+    Choice({name:'rating',legend:'Service-connected disability rating',help:'The combined rating on the VA Benefits Summary Letter.',value:pf.rating,options:RATING,cols:'grid-cols-2 lg:grid-cols-4',onChange:v=>S.upPf('rating',v)}),
+    Choice({name:'state',legend:'Target state',value:pf.state,options:STATES,cols:'grid-cols-2 lg:grid-cols-4',onChange:v=>S.upPf('state',v)}),
+    Choice({name:'goal',legend:'Primary goal',help:'Pick the one that matters most right now. The score weights change with the goal.',value:pf.goal,options:GOALS,cols:'sm:grid-cols-2'  ,onChange:v=>S.upPf('goal',v)}));
+}
+
+function FinanceTab(S){
+  const fin=S.fin,c=S.c,ca=S.pf.state==='California';
+  const qual=num(fin.income)+(fin.vaOn?num(fin.vaAmt)*1.25:0),dti=qual>0?num(fin.debt)/qual*100:null;
+  const dTone=dti===null?'slate':dti<=41?'emerald':dti<=50?'warn':'crit';
+  return div({className:'flex flex-col gap-6'},
+    div(null,h2({className:'h2'},'Step 2. Financial & credit readiness'),p({className:'help',style:{marginTop:'.25rem'}},'Estimates are fine. Use monthly dollar amounts, rounded. The caseworker checks them against pay stubs, award letters and a credit report.')),
+    Choice({name:'credit',legend:'Estimated credit score tier',help:'Self-reported. A free report from annualcreditreport.com shows the real picture.',value:fin.credit,options:CREDIT,cols:'grid-cols-2 lg:grid-cols-4',onChange:v=>S.upFin('credit',v)}),
+    div({className:'grid gap-5 md:grid-cols-2'},
+      Money({id:'inc',label:'Monthly gross income (taxable)',help:'Wages, retirement, self-employment, before taxes. Leave out VA disability pay here.',value:fin.income,onChange:v=>S.upFin('income',v)}),
+      Money({id:'debt',label:'Monthly debt payments',help:'Car, cards, student loans, child support, and any other required monthly payments. Leave out rent you would replace.',value:fin.debt,onChange:v=>S.upFin('debt',v)})),
+    div({className:'grid gap-3 md:grid-cols-2 items-start'},
+      Check({checked:fin.vaOn,onChange:v=>S.upFin('vaOn',v),t:'I receive tax-free VA disability compensation',s:'Lenders may count tax-free income at a higher value. The tool grosses it up by 25% as an illustration.'}),
+      fin.vaOn?Money({id:'vac',label:'Monthly VA compensation',help:'The amount on the VA Benefits Summary Letter.',value:fin.vaAmt,onChange:v=>S.upFin('vaAmt',v)}):div({className:'text-sm muted'},'Turn this on to add the monthly amount.')),
+    div({className:'grid gap-5 md:grid-cols-2'},
+      Money({id:'sav',label:'Available down payment and closing-cost savings',help:'Cash on hand, not including retirement accounts.',value:fin.savings,onChange:v=>S.upFin('savings',v)}),
+      fieldset({className:'grp'},legend({className:'lg'},'Grant and assistance eligibility'),p({className:'help'},'Check what the veteran has or plans to use. The caseworker confirms each one.'),
+        div({className:'grid gap-2'},
+          Check({checked:fin.assist.vaZero,onChange:v=>S.upAssist('vaZero',v),t:'VA 0%-down entitlement',s:'Confirmed or expected through a Certificate of Eligibility'}),
+          Check({checked:fin.assist.dpa,onChange:v=>S.upAssist('dpa',v),t:'State down payment assistance (DPA)',s:'A state housing agency or state veteran program'}),
+          Check({checked:fin.assist.calvet&&ca,disabled:!ca,onChange:v=>S.upAssist('calvet',v),t:'CalVet home loan program',s:ca?'California only':'Available only when the target state is California'})))),
+    div({className:'card-2 p-4'},
+      div({className:'eyebrow muted'},'Live indicators'),
+      div({className:'grid gap-4 sm:grid-cols-3',style:{marginTop:'.5rem'}},
+        div(null,div({className:'text-sm muted'},'Qualifying monthly income'),div({className:'text-2xl font-extrabold',style:{fontVariantNumeric:'tabular-nums'}},money(qual))),
+        div(null,div({className:'text-sm muted'},'Monthly debt'),div({className:'text-2xl font-extrabold',style:{fontVariantNumeric:'tabular-nums'}},money(num(fin.debt)))),
+        div(null,div({className:'text-sm muted'},'Debt-to-income (41% benchmark)'),
+          div({className:'flex items-center gap-2 flex-wrap'},span({className:'text-2xl font-extrabold',style:{fontVariantNumeric:'tabular-nums'}},dti===null?'—':Math.round(dti)+'%'),
+            dti===null?null:Chip(dTone,dti<=41?'At or under benchmark':dti<=50?'Above benchmark':'Well above','●')))),
+      p({className:'text-sm muted',style:{margin:'.75rem 0 0'}},'Qualifying income is illustrative. Each lender sets its own rules for tax-free income, debts and residual income.')));
+}
+function Incomplete(S,which){
+  const miss=[];
+  if(!S.pf.discharge)miss.push('discharge status');if(!S.pf.rating)miss.push('disability rating');
+  if(!S.pf.state)miss.push('target state');if(!S.pf.goal)miss.push('primary goal');if(!S.fin.credit)miss.push('credit tier');
+  return div({className:'card-2 p-6 flex flex-col gap-3 items-start'},
+    h2({className:'h2'},which+' needs a few answers first'),
+    p({style:{margin:0}},'Still missing: '+miss.join(', ')+'.'),
+    div({className:'flex gap-2 flex-wrap'},
+      button({type:'button',className:'btn btn-primary',onClick:()=>S.go(0)},'Go to step 1'),
+      button({type:'button',className:'btn',onClick:()=>S.go(1)},'Go to step 2')));
+}
+
+function ProgCard(pr){
+  const st=ST[pr.status];
+  return div({key:pr.id,className:'card p-4 flex flex-col gap-3'},
+    div({className:'flex items-start justify-between gap-3 flex-wrap'},h3({className:'h3',style:{flex:'1 1 12rem'}},pr.name),Chip(st.tone,st.t,st.i)),
+    ul({className:'list-disc pl-5 text-sm',style:{margin:0}},...pr.why.map((w,i)=>li({key:i,style:{marginBottom:'.25rem'}},w))),
+    div({className:'text-sm'},strong(null,'Next step: '),pr.next),
+    div({className:'text-xs muted'},'Verify at ',a({href:pr.src[1],target:'_blank',rel:'noopener noreferrer',className:'lnk'},pr.src[0]),'. Rules change, so a caseworker confirms.'));
+}
+
+function DashTab(S){
+  if(!S.c)return Incomplete(S,'The readiness dashboard');
+  const c=S.c,main=S.progs.filter(x=>x.status!=='notfocus'),rest=S.progs.filter(x=>x.status==='notfocus'),W=WEIGHTS[S.pf.goal];
+  return div({className:'flex flex-col gap-6'},
+    h2({className:'h2'},'Step 3. Readiness dashboard'),
+    div({className:'card p-5 grid gap-5 md:grid-cols-[auto_1fr] items-center'},
+      div(null,div({className:'eyebrow muted'},'Housing & transition readiness'),
+        div({className:'flex items-baseline gap-2'},span({style:{fontSize:'4.5rem',fontWeight:800,lineHeight:1,fontVariantNumeric:'tabular-nums'}},String(c.score)),span({className:'text-xl font-bold muted'},'/ 100'))),
+      div({className:'min-w-0 flex flex-col gap-2'},
+        div({className:'flex items-center gap-2 flex-wrap'},Chip(c.band.tone,c.band.label),span({className:'text-sm muted'},'Goal: '+lab(GOALS,S.pf.goal))),
+        Bar(c.score,c.band.tone,'Overall readiness score',true),
+        div({className:'relative text-xs muted',style:{height:'1rem'}},...[40,60,80].map(t=>span({key:t,style:{position:'absolute',left:t+'%',transform:'translateX(-50%)',fontVariantNumeric:'tabular-nums'}},String(t)))),
+        p({className:'text-sm',style:{margin:0}},'Indicative only. The score comes from self-reported answers and is not an eligibility decision.'))),
+    div({className:'card p-5 flex flex-col gap-4'},
+      h3({className:'h3'},'Where the points come from'),
+      ...c.dims.map(d=>div({key:d.key,className:'flex flex-col gap-1'},
+        div({className:'flex justify-between gap-3 flex-wrap'},strong(null,d.label),span({className:'font-bold',style:{fontVariantNumeric:'tabular-nums'}},d.pts.toFixed(1)+' of '+Math.round(d.max)+' pts')),
+        Bar(d.pct*100,toneOf(d.pct),d.label),
+        span({className:'text-sm muted'},d.note))),
+      div({className:'card-2 p-3 text-sm'},strong(null,'Biggest lever: '),c.leverTxt)),
+    c.flags.length?div({className:'flex flex-col gap-2'},h3({className:'h3'},'Flags for the caseworker ('+c.flags.length+')'),
+      ...c.flags.map((f,i)=>div({key:i,className:'flag'},span({'aria-hidden':'true'},'⚠'),span(null,f)))):null,
+    div({className:'flex flex-col gap-3'},
+      h3({className:'h2'},'Programs to screen'),
+      div({className:'grid gap-4 md:grid-cols-2'},...main.map(ProgCard)),
+      rest.length?details({className:'card p-4'},summary(null,'Not tied to this goal ('+rest.length+')'),
+        ul({className:'text-sm',style:{margin:'.6rem 0 0',paddingLeft:'1.1rem',listStyle:'disc'}},...rest.map(r=>li({key:r.id},strong(null,r.name+': '),r.why[0])))):null),
+    details({className:'card p-4'},summary(null,'How the score works'),
+      p({className:'text-sm',style:{margin:'.6rem 0'}},'Each area earns a share of its weight from the answer given, and the weights change with the goal. The weights below are for “'+lab(GOALS,S.pf.goal)+'”.'),
+      div({style:{overflowX:'auto'}},table({className:'text-sm',style:{borderCollapse:'collapse',minWidth:'22rem'}},
+        thead(null,tr(null,th({className:'text-left',style:{padding:'.3rem .6rem .3rem 0'}},'Area'),th({className:'text-right',style:{padding:'.3rem 0'}},'Weight'))),
+        tbody(null,...c.dims.map(d=>tr({key:d.key,style:{borderTop:'1px solid var(--line)'}},td({style:{padding:'.35rem .6rem .35rem 0'}},d.label),td({className:'text-right',style:{padding:'.35rem 0',fontVariantNumeric:'tabular-nums'}},Math.round(W[d.key]*100)+'%')))))),
+      p({className:'text-sm muted',style:{margin:'.6rem 0 0'}},'Credit tiers, discharge status and rating map to fixed percentages. Debt-to-income of 36% or less earns full points, 41% most, 50% about half. Cash counts savings, VA 0%-down entitlement and state assistance. These are screening rules chosen for this tool, not VA or lender formulas.')));
+}
+
+function PlanTab(S){
+  if(!S.c)return Incomplete(S,'The action plan and handoff');
+  const pl=S.pl,all=[].concat(pl.d30,pl.d60,pl.d90),dn=all.filter(i=>S.done[i.id]).length,pc=all.length?dn/all.length*100:0;
+  const phases=[['d30','Days 1–30','Documents and eligibility'],['d60','Days 31–60','Build readiness'],['d90','Days 61–90','Act and review']];
+  const PR={1:['crit','High'],2:['gold','Medium'],3:['slate','Routine']};
+  const vc=VERIF.filter(v=>S.verif[v[0]]).length;
+  return div({className:'flex flex-col gap-6'},
+    div(null,h2({className:'h2'},'Step 4. 30/60/90-day plan & caseworker handoff'),p({className:'help',style:{marginTop:'.25rem'}},'Tick items as the veteran completes them. Items are ordered by priority within each phase.')),
+    div({className:'card p-4 flex flex-col gap-2'},div({className:'flex justify-between gap-2 flex-wrap'},strong(null,'Plan progress'),span({className:'font-bold',style:{fontVariantNumeric:'tabular-nums'}},dn+' of '+all.length+' steps done')),Bar(pc,'emerald','Plan progress')),
+    div({className:'grid gap-4 lg:grid-cols-3 items-start'},...phases.map(ph=>{
+      const items=pl[ph[0]],d=items.filter(i=>S.done[i.id]).length;
+      return div({key:ph[0],className:'card-2 p-3 flex flex-col gap-2 min-w-0'},
+        div({className:'flex justify-between items-baseline gap-2 flex-wrap'},div(null,div({className:'h3'},ph[1]),div({className:'text-sm muted'},ph[2])),span({className:'text-sm font-bold',style:{fontVariantNumeric:'tabular-nums'}},d+'/'+items.length)),
+        ...items.map(i=>label({key:i.id,className:'row'+(S.done[i.id]?' done':'')},
+          input({type:'checkbox',checked:!!S.done[i.id],onChange:()=>S.toggleDone(i.id)}),
+          div({className:'min-w-0'},div({className:'rt'},i.t),div({className:'rw'},i.why),div({style:{marginTop:'.35rem'}},Chip(PR[i.pr][0],PR[i.pr][1]+' priority'))))));})),
+    section({className:'flex flex-col gap-4','aria-labelledby':'hand-h'},
+      h2({id:'hand-h',className:'h2'},'Caseworker handoff summary'),
+      div({className:'crit-box p-4'},
+        div({className:'flex flex-wrap items-center gap-2'},Chip('crit','Mandatory','⛔'),strong(null,'Human Caseworker Verification Required')),
+        p({style:{margin:'.5rem 0 0'}},'Everything in this summary is self-reported and unverified. A caseworker must confirm each item with the veteran, the VA and each program or lender before anyone relies on it. The summary carries this notice at the top and bottom.')),
+      fieldset({className:'grp'},legend({className:'lg'},'Caseworker verification checklist ('+vc+' of '+VERIF.length+' attested)'),
+        p({className:'help'},'Tick only after the check is done. Unticked items appear as NOT YET VERIFIED in the summary.'),
+        div({className:'grid gap-2 md:grid-cols-2'},...VERIF.map(v=>Check({key:v[0],checked:!!S.verif[v[0]],onChange:()=>S.toggleVerif(v[0]),t:v[1]})))),
+      div({className:'flex flex-col gap-1'},
+        label({htmlFor:'notes',className:'lg'},'Optional case notes (no names, ID numbers, phone numbers or addresses)'),
+        textarea({id:'notes',className:'field',rows:3,value:S.notes,placeholder:'Example: Prefers morning appointments. Has a contractor lined up for the build.',onChange:ev=>S.setNotes(ev.target.value)}),
+        S.redactCount?div({className:'flag',role:'status',style:{marginTop:'.4rem'}},span({'aria-hidden':'true'},'⚠'),span(null,S.redactCount+' possible identifier(s) were redacted in the summary. Delete them from this box too.')):null),
+      div({className:'flex flex-wrap gap-2'},
+        button({type:'button',className:'btn btn-primary',onClick:S.copy},'Copy summary'),
+        S.dl?button({type:'button',className:'btn',onClick:S.save},'Save as text file'):null,
+        button({type:'button',className:'btn',onClick:S.selectAll},'Select all')),
+      div({role:'status','aria-live':'polite',className:'text-sm',style:{minHeight:'1.25rem',color:'var(--emerald-ink)',fontWeight:600}},S.msg),
+      label({htmlFor:'summary',className:'lg'},'Redacted summary (read-only preview)'),
+      textarea({id:'summary',ref:S.sumRef,className:'mono',rows:24,readOnly:true,value:S.summary})));
+}
+
+function Footer(){
+  return footer({className:'card p-4 text-sm flex flex-col gap-2'},
+    div(null,strong(null,'If a veteran is in crisis: '),'Veterans Crisis Line, dial 988 then press 1, or text 838255. ',strong(null,'Homeless or at risk: '),'National Call Center for Homeless Veterans, 1-877-424-3838.'),
+    div({className:'muted'},'Program rules, rates and limits change often. Confirm current terms at ',a({href:'https://www.va.gov/',target:'_blank',rel:'noopener noreferrer',className:'lnk'},'VA.gov'),' and with each program. This tool is a planning aid and does not give legal, financial or benefits advice.'));
+}
+const TABS=[['Transition profile'],['Financial & credit'],['Readiness dashboard'],['30/60/90 plan & handoff']];
+
+function App(){
+  const [sid,setSid]=useState('a');
+  const [pf,setPf]=useState(clone(SC[0].pf));
+  const [fin,setFin]=useState(clone(SC[0].fin));
+  const [tab,setTab]=useState(0);
+  const [done,setDone]=useState({});
+  const [verif,setVerif]=useState({});
+  const [notes,setNotes]=useState('');
+  const [msg,setMsg]=useState('');
+  const [dl,setDl]=useState(null);
+  const sumRef=useRef(null),tabsRef=useRef(null),tabBtns=useRef([]),first=useRef(true);
+
+  useEffect(()=>{
+    let on=true;
+    (async()=>{try{const cl=window.claude;if(cl&&cl.use){const d=await cl.use('downloads');if(on&&d)setDl(d);}}catch(err){}})();
+    return()=>{on=false;};
+  },[]);
+  useEffect(()=>{
+    if(first.current){first.current=false;return;}
+    const el=tabsRef.current;if(el&&el.scrollIntoView)el.scrollIntoView({block:'start'});
+  },[tab]);
+
+  const pfOk=!!(pf.discharge&&pf.rating&&pf.state&&pf.goal);
+  const ready=pfOk&&!!fin.credit;
+  const c=useMemo(()=>ready?calc(pf,fin):null,[ready,pf,fin]);
+  const progs=useMemo(()=>c?programs(pf,fin,c):[],[c,pf,fin]);
+  const pl=useMemo(()=>c?plan(pf,fin,c):null,[c,pf,fin]);
+  const demo=sid==='a'||sid==='b'||sid==='c';
+  const summaryText=useMemo(()=>c?buildSummary({pf,fin,c,progs,pl,done,verif,notes,demo,date:new Date().toISOString().slice(0,10)}):'',[c,progs,pl,done,verif,notes,demo]);
+  const redactCount=redact(notes).count;
+
+  const edited=()=>{if(sid==='a'||sid==='b'||sid==='c')setSid('custom');setMsg('');};
+  const S={
+    sid,pf,fin,c,progs,pl,done,verif,notes,setNotes,msg,dl,sumRef,summary:summaryText,redactCount,
+    go:setTab,
+    load:s=>{setSid(s.id);setPf(clone(s.pf));setFin(clone(s.fin));setDone({});setVerif({});setNotes('');setMsg('');},
+    blank:()=>{setSid('blank');setPf(clone(BLANK_PF));setFin(clone(BLANK_FIN));setDone({});setVerif({});setNotes('');setMsg('');setTab(0);},
+    upPf:(k,v)=>{edited();setPf(x=>Object.assign({},x,{[k]:v}));},
+    upFin:(k,v)=>{edited();setFin(x=>Object.assign({},x,{[k]:v}));},
+    upAssist:(k,v)=>{edited();setFin(x=>Object.assign({},x,{assist:Object.assign({},x.assist,{[k]:v})}));},
+    toggleDone:id=>setDone(x=>Object.assign({},x,{[id]:!x[id]})),
+    toggleVerif:id=>setVerif(x=>Object.assign({},x,{[id]:!x[id]})),
+    copy:async()=>{
+      try{await navigator.clipboard.writeText(summaryText);setMsg('Copied. Paste it into your case-management system.');}
+      catch(err){const el=sumRef.current;if(el){el.focus();el.select();}setMsg('Copy was blocked here. The summary is selected: press Ctrl+C (Command+C on Mac).');}
+    },
+    save:async()=>{
+      try{await dl.save({filename:'caseworker-handoff-summary-REDACTED.txt',data:summaryText});setMsg('Saved. Keep the file in your secure case system only.');}
+      catch(err){setMsg(err&&err.code==='declined'?'Save canceled.':'Saving is not available in this view. Use Copy summary instead.');}
+    },
+    selectAll:()=>{const el=sumRef.current;if(el){el.focus();el.select();setMsg('Summary selected. Press Ctrl+C (Command+C on Mac) to copy.');}}
+  };
+
+  const stepDone=[pfOk,!!fin.credit&&num(fin.income)>0,!!c&&tab>2,false];
+  const onKey=ev=>{
+    let n=null;
+    if(ev.key==='ArrowRight')n=(tab+1)%4;else if(ev.key==='ArrowLeft')n=(tab+3)%4;else if(ev.key==='Home')n=0;else if(ev.key==='End')n=3;
+    if(n!==null){ev.preventDefault();setTab(n);setTimeout(()=>{const b=tabBtns.current[n];if(b)b.focus();},0);}
+  };
+  const panels=[ProfileTab,FinanceTab,DashTab,PlanTab];
+
+  return div(null,
+    Header(S),
+    div({className:'gut'},div({className:'mx-auto max-w-6xl flex flex-col gap-6',style:{paddingTop:'1.5rem',paddingBottom:'2rem'}},
+      Privacy(),FourD(),Scenarios(S),
+      section({'aria-label':'Intake and readiness steps'},
+        div({ref:tabsRef,className:'tabs card',role:'tablist','aria-label':'Navigator steps',onKeyDown:onKey,style:{borderBottomLeftRadius:0,borderBottomRightRadius:0,scrollMarginTop:'8px'}},
+          ...TABS.map((t,i)=>button({key:i,type:'button',role:'tab',id:'tab-'+i,'aria-selected':tab===i,'aria-controls':'panel',tabIndex:tab===i?0:-1,className:'tab',ref:el=>{tabBtns.current[i]=el;},onClick:()=>setTab(i)},
+            span({className:'num'+(i<2&&stepDone[i]?' ok':''),'aria-hidden':'true'},(i<2&&stepDone[i])?'✓':String(i+1)),
+            span(null,t[0])))),
+        div({id:'panel',role:'tabpanel','aria-labelledby':'tab-'+tab,className:'card p-5',style:{borderTopLeftRadius:0,borderTopRightRadius:0,borderTop:0,minWidth:0}},
+          panels[tab](S),
+          div({className:'flex justify-between gap-2 flex-wrap',style:{marginTop:'1.75rem',paddingTop:'1rem',borderTop:'1px solid var(--line)'}},
+            button({type:'button',className:'btn',disabled:tab===0,onClick:()=>setTab(tab-1)},'← Back'),
+            button({type:'button',className:'btn btn-primary',disabled:tab===3,onClick:()=>setTab(tab+1)},tab<3?'Next: '+TABS[tab+1][0]+' →':'Last step')))),
+      Footer())));
+}
+
+ReactDOM.createRoot(document.getElementById('root')).render(e(App));
+})();
+</script>
+
+</body></html>
