@@ -1,0 +1,172 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Enterprise AI Prompt Governance &amp; 4D Audit Sandbox</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+<style>
+  :root{color-scheme:dark}
+  body{background:#020617;color:#e2e8f0;font-family:Inter,system-ui,sans-serif;padding-block:24px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+  .font-display{font-family:"Space Grotesk",Inter,system-ui,sans-serif}
+  :focus-visible{outline:2px solid #a78bfa;outline-offset:2px}
+</style>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo, useRef } = React;
+const USE_CASES = {
+  "Healthcare Intake Triage": ["High-stakes", "A licensed clinician signs off before any triage output reaches a patient record."],
+  "Nonprofit Grant Drafting": ["Moderate", "A program director verifies every figure and funder claim before submission."],
+  "Cloud/Linux Runbook Generation": ["High-stakes", "An engineer validates every command in staging before production use."],
+};
+const DS = [
+  ["delegation", "Delegation Scope Defined", "Task, data and the AI's role are bounded in writing."],
+  ["description", "Clear Description & Constraints", "Prompt states goal, format, limits and what to refuse."],
+  ["discernment", "Discernment Fact-Check Plan", "A named reviewer verifies facts, sources and commands."],
+  ["diligence", "Creation & Transparency Diligence", "Inputs scrubbed, AI use disclosed, human signs off."],
+];
+const RULES = [
+  ["SSN", /\b\d{3}-\d{2}-\d{4}\b/g, "[SSN REDACTED]"],
+  ["Email", /[A-Za-z0-9._%+-]+@[A-Za-z0-9-]+(?:\.[A-Za-z0-9-]+)+/g, "[EMAIL REDACTED]"],
+  ["API key", /\b(?:sk-[A-Za-z0-9_-]{12,}|AKIA[0-9A-Z]{16}|ghp_[A-Za-z0-9]{20,})\b|(?:api[_-]?key|token|secret|password)\s*[:=]\s*\S+/gi, "[API KEY REDACTED]"],
+];
+const DEMOS = [
+  { label: "Clinic Intake Prompt Audit", uc: "Healthcare Intake Triage",
+    ck: { delegation: 1, description: 1, discernment: 1 },
+    prompt: "Summarize this intake note and suggest a triage priority (routine, urgent, emergent). Patient: Jane Sample, SSN 123-45-6789, contact jane.sample@example.com. Complaint: chest tightness for 2 days. Do not diagnose; flag anything a clinician must review." },
+  { label: "Cloud Runbook Prompt Check", uc: "Cloud/Linux Runbook Generation",
+    ck: { delegation: 1, description: 1, discernment: 1, diligence: 1 },
+    prompt: "Write a Rocky Linux 9 runbook for rotating TLS certificates on web-01. Use api_key=AKIAIOSFODNN7EXAMPLE for the inventory call and notify ops-oncall@example.com. Output numbered steps with a rollback section. Never run commands in production without approval." },
+];
+function scan(text) {
+  let out = text;
+  const found = RULES.map(([k, re, mask]) => { const n = (out.match(re) || []).length; out = out.replace(re, mask); return [k, n]; });
+  return { out, found, total: found.reduce((a, [, n]) => a + n, 0) };
+}
+const Box = ({ children, className = "" }) => <section className={"min-w-0 rounded-xl border border-slate-800 bg-slate-900/70 p-4 " + className}>{children}</section>;
+const Label = ({ children, htmlFor }) => <label htmlFor={htmlFor} className="mb-1.5 block text-xs font-semibold uppercase tracking-wider text-slate-400">{children}</label>;
+
+function App() {
+  const [tab, setTab] = useState(0);
+  const [uc, setUc] = useState(DEMOS[0].uc);
+  const [prompt, setPrompt] = useState(DEMOS[0].prompt);
+  const [ck, setCk] = useState(DEMOS[0].ck);
+  const [note, setNote] = useState("");
+  const memoRef = useRef(null);
+  const r = useMemo(() => scan(prompt), [prompt]);
+  const n = DS.filter(([k]) => ck[k]).length;
+  const long = prompt.trim().length >= 40;
+  const score = n * 15 + (long && r.total === 0 ? 30 : 0) + (long ? 10 : 0);
+  const verdict = score >= 85 ? "Cleared for human sign-off" : score >= 60 ? "Conditional: close gaps first" : "Hold: do not deploy";
+  const tone = score >= 85 ? ["border-emerald-600/60 bg-emerald-950/50 text-emerald-300", "bg-emerald-500"]
+    : score >= 60 ? ["border-amber-600/60 bg-amber-950/40 text-amber-300", "bg-amber-500"] : ["border-rose-600/60 bg-rose-950/40 text-rose-300", "bg-rose-500"];
+  const load = (d) => { setUc(d.uc); setPrompt(d.prompt); setCk(d.ck); setTab(0); };
+  const memo = [
+    "ENTERPRISE AI AUDIT SIGN-OFF MEMO", "Date: " + new Date().toLocaleDateString(),
+    "Use case: " + uc + " (" + USE_CASES[uc][0] + ")",
+    "Governance readiness: " + score + "/100 - " + verdict,
+    "Sensitive-data scan of submitted prompt: " + (r.total ? r.total + " item(s) found (" + r.found.filter(([, c]) => c).map(([k, c]) => k + " x" + c).join(", ") + "); mask before use" : "no SSNs, emails or API keys detected"),
+    "", "Anthropic 4D Framework:", ...DS.map(([k, t]) => (ck[k] ? "[x] " : "[ ] ") + t),
+    "", "Required human control: " + USE_CASES[uc][1], "", "Masked prompt on file:", r.out, "",
+    "Reviewer: ____________  Title: ____________  Date: ________  Signature: ____________",
+  ].join("\n");
+  const copy = () => {
+    const ok = () => setNote("Memo copied");
+    const fail = () => { memoRef.current && memoRef.current.select(); setNote("Press Ctrl/Cmd+C to copy"); };
+    try { navigator.clipboard.writeText(memo).then(ok, fail); } catch (e) { fail(); }
+    setTimeout(() => setNote(""), 2500);
+  };
+  return (
+    <div className="mx-auto max-w-5xl space-y-4">
+      <header className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0">
+          <p className="text-xs font-semibold uppercase tracking-widest text-violet-400">Anthropic 4D Framework · Governance Lab</p>
+          <h1 className="font-display text-2xl font-bold text-white sm:text-3xl">Enterprise AI Prompt Governance &amp; 4D Audit Sandbox</h1>
+        </div>
+        <div className={"rounded-lg border px-4 py-2 text-right " + tone[0]}>
+          <div className="font-display text-2xl font-bold tabular-nums">{score}<span className="text-sm opacity-70">/100</span></div>
+          <div className="text-xs font-medium">{verdict}</div>
+        </div>
+      </header>
+      <div role="note" className="rounded-xl border border-emerald-700/50 bg-emerald-950/40 p-4 text-sm leading-relaxed text-emerald-100">
+        <strong className="text-emerald-300">Creation &amp; Governance Diligence.</strong> Scrub PII, PHI and credentials before pasting any prompt into an AI tool, and require named human sign-off on every high-stakes AI output before anyone acts on it. Everything here runs in your browser; sample values are fictional.
+      </div>
+      <div className="flex flex-wrap items-center gap-2">
+        <div role="tablist" className="inline-flex rounded-lg bg-slate-900 p-1">
+          {["Prompt Redactor & 4D Check", "Governance Scorecard"].map((t, i) => (
+            <button key={t} role="tab" aria-selected={tab === i} onClick={() => setTab(i)}
+              className={"rounded-md px-3 py-1.5 text-sm font-medium " + (tab === i ? "bg-violet-600 text-white" : "text-slate-300 hover:text-white")}>{t}</button>
+          ))}
+        </div>
+        <span className="text-xs text-slate-500">Quick demos:</span>
+        {DEMOS.map((d) => <button key={d.label} onClick={() => load(d)} className="rounded-md border border-violet-500/50 px-3 py-1.5 text-sm text-violet-200 hover:bg-violet-950">{d.label}</button>)}
+      </div>
+      {tab === 0 ? (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Box className="space-y-4">
+            <div>
+              <Label htmlFor="uc">Deployment use case</Label>
+              <select id="uc" value={uc} onChange={(e) => setUc(e.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 px-3 py-2 text-sm">
+                {Object.keys(USE_CASES).map((k) => <option key={k}>{k}</option>)}
+              </select>
+              <p className="mt-1.5 text-xs text-slate-400"><span className="font-semibold text-violet-300">{USE_CASES[uc][0]}.</span> {USE_CASES[uc][1]}</p>
+            </div>
+            <div>
+              <Label htmlFor="pr">Sample prompt</Label>
+              <textarea id="pr" rows={7} value={prompt} onChange={(e) => setPrompt(e.target.value)} className="w-full rounded-lg border border-slate-700 bg-slate-950 p-3 font-mono text-xs leading-relaxed" />
+              <button disabled={!r.total} onClick={() => setPrompt(r.out)} className="mt-2 rounded-md bg-violet-600 px-3 py-1.5 text-sm font-medium text-white disabled:cursor-not-allowed disabled:bg-slate-800 disabled:text-slate-500">Apply masking to prompt</button>
+            </div>
+            <fieldset>
+              <legend className="mb-1.5 text-xs font-semibold uppercase tracking-wider text-slate-400">Anthropic 4D checks</legend>
+              {DS.map(([k, t, d]) => (
+                <label key={k} className="flex cursor-pointer items-start gap-2 py-1.5">
+                  <input type="checkbox" checked={!!ck[k]} onChange={() => setCk({ ...ck, [k]: !ck[k] })} className="mt-1 h-4 w-4 accent-emerald-500" />
+                  <span className="text-sm"><span className="font-medium text-slate-100">{t}</span><span className="block text-xs text-slate-400">{d}</span></span>
+                </label>
+              ))}
+            </fieldset>
+          </Box>
+          <Box className="space-y-3">
+            <Label>Masked, safe prompt preview</Label>
+            <pre className="min-h-[8rem] whitespace-pre-wrap break-words rounded-lg border border-slate-700 bg-slate-950 p-3 font-mono text-xs leading-relaxed text-slate-200">
+              {r.out.split(/(\[[A-Z ]+ REDACTED\])/).map((s, i) => /REDACTED\]$/.test(s) ? <mark key={i} className="rounded bg-violet-500/30 px-1 text-violet-200">{s}</mark> : s)}
+            </pre>
+            <div className="flex flex-wrap gap-2" aria-live="polite">
+              {r.found.map(([k, c]) => <span key={k} className={"rounded-full border px-2.5 py-1 text-xs font-medium " + (c ? "border-rose-600/60 bg-rose-950/40 text-rose-300" : "border-emerald-700/50 bg-emerald-950/30 text-emerald-300")}>{k}: {c ? c + " masked" : "clear"}</span>)}
+            </div>
+            <p className="text-xs text-slate-400">{r.total ? "Sensitive data is still in your original prompt. Use \"Apply masking\" or edit it out before this prompt leaves your team." : "No SSNs, emails or API keys detected. Still review for names, addresses and diagnoses, which this sample scanner cannot catch."}</p>
+          </Box>
+        </div>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2">
+          <Box className="space-y-4">
+            <div>
+              <div className="mb-1 flex justify-between text-sm"><span className="font-medium">Governance readiness</span><span className="tabular-nums text-slate-300">{score}/100</span></div>
+              <div className="h-3 overflow-hidden rounded-full bg-slate-800" role="progressbar" aria-valuenow={score} aria-valuemin="0" aria-valuemax="100"><div className={"h-full " + tone[1]} style={{ width: score + "%" }} /></div>
+              <p className="mt-2 text-sm font-medium text-slate-200">{verdict}</p>
+            </div>
+            <ul className="divide-y divide-slate-800 text-sm">
+              {DS.map(([k, t]) => <li key={k} className="flex justify-between gap-3 py-2"><span>{t}</span><span className={ck[k] ? "text-emerald-400" : "text-slate-500"}>{ck[k] ? "+15" : "0"}</span></li>)}
+              <li className="flex justify-between gap-3 py-2"><span>Prompt free of SSNs, emails, API keys</span><span className={long && !r.total ? "text-emerald-400" : "text-slate-500"}>{long && !r.total ? "+30" : "0"}</span></li>
+              <li className="flex justify-between gap-3 py-2"><span>Prompt is specific (40+ characters)</span><span className={long ? "text-emerald-400" : "text-slate-500"}>{long ? "+10" : "0"}</span></li>
+            </ul>
+            <p className="text-xs text-slate-400">Cleared at 85+. High-stakes use cases still need the named human sign-off below, whatever the score.</p>
+          </Box>
+          <Box className="space-y-2">
+            <Label htmlFor="memo">Enterprise AI Audit Sign-Off Memo</Label>
+            <textarea id="memo" ref={memoRef} readOnly rows={16} value={memo} className="w-full rounded-lg border border-slate-700 bg-slate-950 p-3 font-mono text-xs leading-relaxed" />
+            <div className="flex items-center gap-3">
+              <button onClick={copy} className="rounded-md bg-emerald-600 px-3 py-1.5 text-sm font-medium text-white hover:bg-emerald-500">Copy memo</button>
+              <span className="text-xs text-emerald-300" aria-live="polite">{note}</span>
+            </div>
+          </Box>
+        </div>
+      )}
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+
+</body></html>
