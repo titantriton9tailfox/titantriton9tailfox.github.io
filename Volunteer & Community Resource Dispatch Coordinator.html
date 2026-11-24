@@ -1,0 +1,136 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Volunteer & Community Resource Dispatch Coordinator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@600;700&display=swap">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.26.4/babel.min.js"></script>
+<style>
+/* Layout: amber diligence banner on top, then a two-tab board; intake form left, live match card right. */
+:root{--bg:#f5f5fb;--surface:#fff;--fg:#1d1a3b;--mute:#5a5777;--line:#dad9ee;--ind:#4338ca;--ind-soft:#e7e7fb;--on-ind:#fff;--amb:#92400e;--amb-soft:#fef3c7;--amb-line:#f5c451;--ok:#047857;--ok-soft:#d5f5e6;--bad:#b91c1c;--bad-soft:#fde4e4}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#13122a;--surface:#1c1a3c;--fg:#ecebfa;--mute:#aaa8c9;--line:#363361;--ind:#a5b4fc;--ind-soft:#2a2866;--on-ind:#13122a;--amb:#fcd34d;--amb-soft:#3a2c0a;--amb-line:#8a6a14;--ok:#6ee7b7;--ok-soft:#0b3a2c;--bad:#fca5a5;--bad-soft:#4a1818;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#13122a;--surface:#1c1a3c;--fg:#ecebfa;--mute:#aaa8c9;--line:#363361;--ind:#a5b4fc;--ind-soft:#2a2866;--on-ind:#13122a;--amb:#fcd34d;--amb-soft:#3a2c0a;--amb-line:#8a6a14;--ok:#6ee7b7;--ok-soft:#0b3a2c;--bad:#fca5a5;--bad-soft:#4a1818;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:Inter,system-ui,sans-serif;padding-block:20px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2{font-family:"Space Grotesk",Inter,sans-serif;text-wrap:balance}
+.wrap{max-width:1080px;margin:0 auto}
+.card{background:var(--surface);border:1px solid var(--line);border-radius:8px}
+.mute{color:var(--mute)}.ind{color:var(--ind)}
+.lbl{display:block;font-size:11px;letter-spacing:.06em;text-transform:uppercase;font-weight:600;color:var(--mute);margin-bottom:4px}
+.inp{width:100%;background:var(--bg);color:var(--fg);border:1px solid var(--line);border-radius:6px;padding:8px 10px;font-size:14px}
+.btn{background:var(--ind);color:var(--on-ind);border-radius:6px;padding:8px 14px;font-size:13px;font-weight:600}
+.btn2{background:var(--ind-soft);color:var(--ind);border-radius:6px;padding:8px 12px;font-size:13px;font-weight:600}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--ind);outline-offset:2px}
+.tab{padding:10px 14px;font-size:14px;font-weight:600;color:var(--mute);border-bottom:3px solid transparent}
+.tab[aria-selected="true"]{color:var(--ind);border-bottom-color:var(--ind)}
+.chip{display:inline-block;border-radius:999px;padding:3px 10px;font-size:12px;font-weight:600}
+.ok{background:var(--ok-soft);color:var(--ok)}.warn{background:var(--amb-soft);color:var(--amb)}.bad{background:var(--bad-soft);color:var(--bad)}
+.banner{background:var(--amb-soft);border:1px solid var(--amb-line);color:var(--fg);border-radius:8px}
+.brief{background:var(--bg);border:1px solid var(--line);border-radius:6px;padding:12px;font:12.5px/1.55 ui-monospace,Menlo,monospace;white-space:pre-wrap;overflow-wrap:anywhere}
+.sign{background:var(--amb-soft);color:var(--amb);border:1px dashed var(--amb-line);border-radius:6px;font-weight:700;font-size:12px;letter-spacing:.05em;text-transform:uppercase;text-align:center;padding:10px}
+</style>
+<div id="root"></div>
+<script type="text/babel">
+const {useState,useRef}=React;
+const NEEDS={
+ "Veteran Peer Check-In":{skill:"Peer Support",dur:"45 min",scope:"Supportive conversation and resource referral. No clinical or crisis counseling."},
+ "Housing Navigation":{skill:"Housing Navigation",dur:"90 min",scope:"Application help, referrals and appointment prep. No legal advice."},
+ "Food Box Delivery":{skill:"Driver & Food Handling",dur:"2 hr route",scope:"Contactless drop-off of sealed boxes and delivery log."},
+ "Digital Literacy Workshop":{skill:"Tech Instruction",dur:"3 hr",scope:"Group session on email, video calls and scam awareness."}};
+const SKILLS=["Peer Support","Housing Navigation","Driver & Food Handling","Tech Instruction","General Volunteer"];
+const URG={Standard:{d:5,note:"dispatch within 5 days"},Priority:{d:2,note:"dispatch within 48 hours"},"Same-Day":{d:0,note:"coordinator phone confirmation before shift"}};
+const ZONES=["North Zone","Central Zone","East Zone","Rural South Zone"];
+const CHECKS=["Request ID confirmed anonymized (no names, addresses or SSNs)","Volunteer background check and training current","Check-in buddy and end-of-shift call-in time set","Scope and boundaries briefed (no medical or legal advice)","Escalation contact and incident protocol shared"];
+const DEMOS=[
+ {label:"Veteran Housing Check-In",f:{id:"VET-4821",need:"Housing Navigation",urg:"Priority",zone:"Central Zone",skill:"Housing Navigation"},c:[1,1,1,0,0]},
+ {label:"Senior Digital Literacy Day",f:{id:"SEN-1107",need:"Digital Literacy Workshop",urg:"Standard",zone:"East Zone",skill:"Tech Instruction"},c:[1,1,1,1,1]}];
+const stamp=()=>new Date().toLocaleTimeString([],{hour:"2-digit",minute:"2-digit"});
+const due=d=>{const x=new Date();x.setDate(x.getDate()+d);return x.toLocaleDateString("en-US",{weekday:"short",month:"short",day:"numeric"})};
+const piiHit=s=>/\b\d{3}-?\d{2}-?\d{4}\b/.test(s)||/@/.test(s)||/\b\d{3}[-. ]\d{3}[-. ]\d{4}\b/.test(s)||/\b\d+\s+\w+\s+(st|street|ave|avenue|rd|road|blvd|ln|lane|dr|drive)\b/i.test(s);
+const Sel=({id,label,v,opts,on})=><div><label htmlFor={id} className="lbl">{label}</label><select id={id} className="inp" value={v} onChange={e=>on(e.target.value)}>{opts.map(o=><option key={o}>{o}</option>)}</select></div>;
+
+function App(){
+ const [f,setF]=useState(DEMOS[0].f);
+ const [c,setC]=useState(DEMOS[0].c.map(Boolean));
+ const [tab,setTab]=useState("intake");
+ const [log,setLog]=useState([{t:stamp(),m:"Example request loaded: Veteran Housing Check-In"}]);
+ const [cp,setCp]=useState("");
+ const ref=useRef(null);
+ const add=m=>setLog(l=>[{t:stamp(),m},...l].slice(0,30));
+ const set=k=>v=>{setF(p=>({...p,[k]:v}));if(k!=="id")add(`${k==="urg"?"Urgency":k==="need"?"Service need":k==="zone"?"Zone":"Volunteer skill"} set to ${v}`)};
+ const demo=d=>{setF(d.f);setC(d.c.map(Boolean));add(`Example request loaded: ${d.label}`)};
+ const toggle=i=>{setC(p=>p.map((x,j)=>j===i?!x:x));add(`${c[i]?"Unchecked":"Checked"}: ${CHECKS[i].split(" (")[0]}`)};
+ const n=NEEDS[f.need],u=URG[f.urg],done=c.filter(Boolean).length;
+ const idOk=/^[A-Z]{2,4}-\d{3,6}$/.test(f.id),pii=piiHit(f.id);
+ const m=f.skill===n.skill?{l:"Strong skill match",k:"ok"}:f.skill==="General Volunteer"?{l:"Partial match: pair with a trained lead",k:"warn"}:{l:"Skill mismatch",k:"bad"};
+ const open=CHECKS.filter((_,i)=>!c[i]).map(x=>x.split(" (")[0]);
+ const st=pii||!idOk?{l:"Blocked: fix request ID",k:"bad"}:m.k==="bad"?{l:"Hold: reassign volunteer",k:"bad"}:done<5?{l:`In prep: ${done} of 5 checks done`,k:"warn"}:m.k==="warn"?{l:"Ready for sign-off (supervised)",k:"warn"}:{l:"Ready for sign-off",k:"ok"};
+ const blocked=pii||!idOk;
+ const brief=blocked?"Brief unavailable until the request ID is an anonymized code such as VET-4821.":
+`SHIFT BRIEF | Request ${f.id}
+Service: ${f.need} (${n.dur})
+Urgency: ${f.urg}, ${u.note}; target ${due(u.d)}
+Zone: ${f.zone}
+Volunteer skill: ${f.skill} (${m.l})
+Scope: ${n.scope}
+Safety checklist: ${done} of 5 complete
+Open items: ${open.join("; ")||"none"}
+Privacy: anonymized ID only. No addresses, SSNs or medical records.
+HUMAN COORDINATOR SIGN-OFF REQUIRED before dispatch.`;
+ const copy=async()=>{try{await navigator.clipboard.writeText(brief);setCp("Copied");}catch(e){const r=document.createRange();r.selectNodeContents(ref.current);const s=getSelection();s.removeAllRanges();s.addRange(r);setCp("Selected: press Ctrl/Cmd+C");}add("Shift brief copied");setTimeout(()=>setCp(""),2500)};
+ return <div className="wrap flex flex-col gap-4">
+  <header className="flex flex-col gap-1">
+   <p className="lbl m-0">Community Resource Network · {new Date().toLocaleDateString("en-US",{month:"long",day:"numeric",year:"numeric"})}</p>
+   <h1 className="text-2xl sm:text-3xl font-bold m-0">Volunteer &amp; Community Resource Dispatch Coordinator</h1>
+  </header>
+  <div className="banner p-3 text-sm" role="note"><strong>Diligence reminder:</strong> use anonymized request IDs only. Never enter client home addresses, SSNs or medical records here. Briefs are drafts until a human coordinator signs off.</div>
+  <div className="card">
+   <div role="tablist" className="flex flex-wrap gap-1 px-2 border-b" style={{borderColor:"var(--line)"}}>
+    {[["intake","Intake & Shift Matching"],["audit","Dispatch Summary & Audit"]].map(([k,l])=><button key={k} role="tab" aria-selected={tab===k} className="tab" onClick={()=>setTab(k)}>{l}</button>)}
+   </div>
+   <div className="p-4">
+   {tab==="intake"?<div className="grid gap-5 lg:grid-cols-5">
+    <section className="lg:col-span-2 flex flex-col gap-3 min-w-0">
+     <div className="flex flex-wrap gap-2 items-center"><span className="lbl m-0">Quick demos</span>{DEMOS.map(d=><button key={d.label} className="btn2" onClick={()=>demo(d)}>{d.label}</button>)}</div>
+     <div><label htmlFor="rid" className="lbl">Anonymized request ID</label>
+      <input id="rid" className="inp" value={f.id} onChange={e=>set("id")(e.target.value.toUpperCase())} placeholder="VET-4821" autoComplete="off"/>
+      {pii&&<p className="text-xs mt-1 m-0" style={{color:"var(--bad)"}}>This looks like personal data. Replace it with a code.</p>}
+      {!pii&&!idOk&&<p className="text-xs mt-1 m-0 mute">Use letters, a dash and numbers, like VET-4821.</p>}</div>
+     <Sel id="need" label="Service need" v={f.need} opts={Object.keys(NEEDS)} on={set("need")}/>
+     <Sel id="urg" label="Urgency level" v={f.urg} opts={Object.keys(URG)} on={set("urg")}/>
+     <Sel id="zone" label="Region / zone" v={f.zone} opts={ZONES} on={set("zone")}/>
+     <Sel id="skill" label="Volunteer skill match" v={f.skill} opts={SKILLS} on={set("skill")}/>
+    </section>
+    <section className="lg:col-span-3 flex flex-col gap-3 min-w-0" aria-live="polite">
+     <div className="flex flex-wrap items-start justify-between gap-2">
+      <div><h2 className="text-lg font-bold m-0">Live volunteer match</h2><p className="text-sm mute m-0">{f.need} · {f.zone} · {f.urg}</p></div>
+      <span className={`chip ${st.k}`}>{st.l}</span></div>
+     <div className="flex flex-wrap gap-2 text-sm"><span className={`chip ${m.k}`}>{m.l}</span><span className="chip" style={{background:"var(--ind-soft)",color:"var(--ind)"}}>Needs: {n.skill}</span><span className="chip warn">Target {due(u.d)}</span></div>
+     <div><h3 className="lbl">Pre-dispatch safety &amp; diligence checklist ({done}/5)</h3>
+      <ul className="list-none p-0 m-0 flex flex-col gap-1">{CHECKS.map((t,i)=><li key={t}><label className="flex gap-2 items-start text-sm p-2 rounded cursor-pointer" style={{background:c[i]?"var(--ok-soft)":"transparent"}}><input type="checkbox" className="mt-1" style={{accentColor:"var(--ind)"}} checked={c[i]} onChange={()=>toggle(i)}/><span>{t}</span></label></li>)}</ul></div>
+     <div><div className="flex flex-wrap items-center justify-between gap-2 mb-1"><h3 className="lbl m-0">Shift brief</h3>
+      <div className="flex items-center gap-2">{cp&&<span className="text-xs mute">{cp}</span>}<button className="btn" disabled={blocked} onClick={copy}>Copy brief</button></div></div>
+      <div className="brief" ref={ref}>{brief}</div></div>
+     <div className="sign">Human Coordinator Sign-Off Required</div>
+    </section>
+   </div>:<div className="grid gap-5 md:grid-cols-2">
+    <section className="min-w-0"><h2 className="text-lg font-bold mt-0">Dispatch summary</h2>
+     <dl className="m-0 text-sm grid grid-cols-[auto,1fr] gap-x-4 gap-y-2">
+      {[["Request",f.id||"none"],["Service",`${f.need} (${n.dur})`],["Zone",f.zone],["Urgency",`${f.urg}: ${u.note}`],["Volunteer",`${f.skill}: ${m.l}`],["Checklist",`${done} of 5 complete`],["Open items",open.join("; ")||"none"]].map(([a,b])=><React.Fragment key={a}><dt className="mute">{a}</dt><dd className="m-0 min-w-0 break-words">{b}</dd></React.Fragment>)}
+     </dl>
+     <p className="mt-3"><span className={`chip ${st.k}`}>{st.l}</span></p>
+     <div className="sign">Human Coordinator Sign-Off Required</div></section>
+    <section className="min-w-0"><h2 className="text-lg font-bold mt-0">Audit trail (this session)</h2>
+     <ol className="list-none p-0 m-0 flex flex-col gap-1 text-sm max-h-80 overflow-y-auto">{log.map((e,i)=><li key={i} className="flex gap-3 py-1 border-b" style={{borderColor:"var(--line)"}}><span className="mute tabular-nums shrink-0">{e.t}</span><span className="min-w-0 break-words">{e.m}</span></li>)}</ol>
+     <p className="text-xs mute">The trail lives in this page only and clears on reload. Copy final decisions into your case system.</p></section>
+   </div>}
+   </div>
+  </div>
+  <p className="text-xs mute m-0">All data on this page is example data and stays in your browser. No external services are called.</p>
+ </div>;
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App/>);
+</script>
+
+</body></html>
