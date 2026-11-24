@@ -1,0 +1,224 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>GCP & Terraform Zero-Trust Landing Zone Planner</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<style>
+/* Layout: warning banner, demo row, two tabs (inputs + score | HCL + checklist). Palette: sky / slate / indigo. */
+:root{--bg:#eef4fa;--card:#fff;--fg:#0f172a;--muted:#475569;--line:#d3deea;--sky:#0369a1;--sky-soft:#e0f2fe;--ind:#4338ca;--ind-soft:#e0e7ff;--on-accent:#fff;--good:#047857;--warn:#b45309;--bad:#b91c1c;--warn-soft:#fef3c7;--warn-line:#f5d27a;--code-bg:#0f172a;--code-fg:#dbe7f5}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b1220;--card:#131c2e;--fg:#e2e8f0;--muted:#94a3b8;--line:#25324a;--sky:#38bdf8;--sky-soft:#0c2a3d;--ind:#818cf8;--ind-soft:#1e2350;--on-accent:#04202e;--good:#34d399;--warn:#fbbf24;--bad:#f87171;--warn-soft:#2e230a;--warn-line:#5c4510;--code-bg:#070d1a;--code-fg:#cfe0f5;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0b1220;--card:#131c2e;--fg:#e2e8f0;--muted:#94a3b8;--line:#25324a;--sky:#38bdf8;--sky-soft:#0c2a3d;--ind:#818cf8;--ind-soft:#1e2350;--on-accent:#04202e;--good:#34d399;--warn:#fbbf24;--bad:#f87171;--warn-soft:#2e230a;--warn-line:#5c4510;--code-bg:#070d1a;--code-fg:#cfe0f5;color-scheme:dark}
+body{background:var(--bg);color:var(--fg);font-family:Inter,system-ui,sans-serif;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:24px}
+h1,h2,.display{font-family:'Space Grotesk',Inter,sans-serif;text-wrap:balance}
+.wrap{max-width:1040px;margin:0 auto}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px;min-width:0}
+.muted{color:var(--muted)}
+.lbl{font-size:.7rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);font-weight:600}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--fg);border-radius:10px;padding:.45rem .8rem;font-size:.85rem;font-weight:500;cursor:pointer}
+.btn:hover{border-color:var(--sky)}
+.on{background:var(--sky);border-color:var(--sky);color:var(--on-accent)}
+.demo{background:var(--ind-soft);border-color:var(--ind);color:var(--ind)}
+.field{border:1px solid var(--line);background:var(--bg);color:var(--fg);border-radius:10px;padding:.5rem .6rem;font-size:.9rem;width:100%}
+.banner{background:var(--warn-soft);border:1px solid var(--warn-line);border-radius:14px}
+.pill{font-size:.7rem;font-weight:600;border-radius:999px;padding:.15rem .55rem;background:var(--sky-soft);color:var(--sky)}
+.bad{background:var(--warn-soft);color:var(--warn)}
+.sw{width:2.4rem;height:1.35rem;border-radius:999px;background:var(--line);position:relative;flex:none;transition:background .15s}
+.sw::after{content:"";position:absolute;top:2px;left:2px;width:calc(1.35rem - 4px);height:calc(1.35rem - 4px);border-radius:50%;background:var(--card);transition:transform .15s}
+[aria-checked="true"] .sw{background:var(--sky)}
+[aria-checked="true"] .sw::after{transform:translateX(1.05rem)}
+.row{display:flex;gap:.75rem;align-items:flex-start;text-align:left;width:100%;padding:.65rem .75rem;border:1px solid var(--line);border-radius:10px;background:var(--bg);cursor:pointer}
+pre.code{background:var(--code-bg);color:var(--code-fg);border-radius:12px;padding:1rem;font-size:.74rem;line-height:1.55;overflow:auto;max-height:30rem;margin:0}
+.tab{padding:.55rem .9rem;border-bottom:2px solid transparent;font-weight:600;font-size:.9rem;color:var(--muted);cursor:pointer}
+.tab[aria-selected="true"]{color:var(--sky);border-color:var(--sky)}
+button:focus-visible,select:focus-visible{outline:2px solid var(--ind);outline-offset:2px}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+</style>
+<div id="root"></div>
+<script>
+const {useState,useMemo,useRef}=React, h=React.createElement;
+const PROFILES={
+ hipaa:{name:'Healthcare HIPAA Enclave',slug:'hipaa-enclave',need:['cmek','flow','iam','vpcsc'],role:'roles/healthcare.datasetViewer',note:'PHI workloads need a signed Google BAA, CMEK, audit trails and a service perimeter.'},
+ nonprofit:{name:'Nonprofit Data Hub',slug:'nonprofit-hub',need:['iam','flow','cmek'],role:'roles/bigquery.dataViewer',note:'Donor and client records: scoped access, logging and encryption at rest.'},
+ ai:{name:'AI Inference API Host',slug:'ai-inference',need:['iam','armor','flow'],role:'roles/aiplatform.user',note:'Public endpoint: WAF in front, scoped identity behind it, traffic logged.'}};
+const REGIONS={'us-west2':{label:'us-west2 · Los Angeles',cost:7,note:'Higher price tier; closest to West Coast users.'},'us-east1':{label:'us-east1 · South Carolina',cost:10,note:'Standard price tier; good East Coast reach.'},'us-central1':{label:'us-central1 · Iowa',cost:10,note:'Standard price tier; broadest service availability.'}};
+const NAMES={cmek:'CMEK encryption',flow:'VPC Flow Logs',iam:'Least-privilege IAM',armor:'Cloud Armor WAF',vpcsc:'VPC Service Controls perimeter'};
+const TOGGLES=[['cmek','Enforce CMEK KMS Encryption','Customer-managed key, 90-day rotation'],['flow','Enable VPC Flow Logs','5-second aggregation, 50% sampling'],['iam','Enforce Least-Privilege IAM','Dedicated service account, one scoped role'],['armor','Enable Cloud Armor WAF','SQLi and XSS rules at the edge']];
+const DEMOS={hipaa:{profile:'hipaa',region:'us-east1',net:'vpcsc',t:{cmek:1,flow:1,iam:1,armor:1}},nonprofit:{profile:'nonprofit',region:'us-central1',net:'vpc',t:{cmek:1,flow:1,iam:1,armor:0}}};
+const START={profile:'nonprofit',region:'us-central1',net:'vpc',t:{cmek:0,flow:1,iam:1,armor:0}};
+const CHECKS=[['terraform fmt -check -recursive','Formatting is consistent'],['terraform validate','Configuration is valid'],['tfsec .','Static scan shows no HIGH or CRITICAL findings'],['terraform plan -out=tfplan','A human reads every create, change and destroy']];
+
+function score(s){
+ const p=PROFILES[s.profile],on={...s.t,vpcsc:s.net==='vpcsc'};
+ const parts=[['Network isolation',s.net==='vpcsc'?15:8,15],['Security controls',(s.t.cmek?18:0)+(s.t.iam?18:0)+(s.t.flow?12:0)+(s.t.armor?12:0),60],['Region cost',REGIONS[s.region].cost,10],['Profile fit',Math.round(15*p.need.filter(k=>on[k]).length/p.need.length),15]];
+ return {parts,total:parts.reduce((a,x)=>a+x[1],0),gaps:p.need.filter(k=>!on[k])};
+}
+function gen(s){
+ const p=PROFILES[s.profile],t=s.t,r=s.region,n=p.slug,vsc=s.net==='vpcsc';
+ const o=[`# main.tf | ${p.name} | ${r}
+# Auth: Workload Identity Federation (no JSON keys). State: encrypted remote GCS bucket.
+terraform {
+  required_version = ">= 1.9"
+  required_providers { google = { source = "hashicorp/google", version = "~> 6.0" } }
+  backend "gcs" {
+    bucket = "REPLACE-encrypted-tfstate"
+    prefix = "${n}"
+  }
+}
+variable "project_id" { type = string }
+provider "google" {
+  project = var.project_id
+  region  = "${r}"
+}
+
+resource "google_compute_network" "vpc" {
+  name                    = "${n}-vpc"
+  auto_create_subnetworks = false
+}
+resource "google_compute_subnetwork" "private" {
+  name                     = "${n}-private"
+  region                   = "${r}"
+  network                  = google_compute_network.vpc.id
+  ip_cidr_range            = "10.10.0.0/20"
+  private_ip_google_access = true${t.flow?`
+  log_config {
+    aggregation_interval = "INTERVAL_5_SEC"
+    flow_sampling        = 0.5
+    metadata             = "INCLUDE_ALL_METADATA"
+  }`:`
+  # log_config omitted: flow logs disabled`}
+}`];
+ o.push(vsc?`
+resource "google_access_context_manager_service_perimeter" "perimeter" {
+  parent = "accessPolicies/POLICY_ID"
+  name   = "accessPolicies/POLICY_ID/servicePerimeters/${n.replace(/-/g,'_')}"
+  title  = "${n}"
+  status {
+    restricted_services = ["storage.googleapis.com", "bigquery.googleapis.com", "aiplatform.googleapis.com"]
+    resources           = ["projects/PROJECT_NUMBER"]
+  }
+}`:`
+resource "google_compute_router" "router" {
+  name    = "${n}-router"
+  region  = "${r}"
+  network = google_compute_network.vpc.id
+}
+resource "google_compute_router_nat" "nat" {
+  name                               = "${n}-nat"
+  router                             = google_compute_router.router.name
+  region                             = "${r}"
+  nat_ip_allocate_option             = "AUTO_ONLY"
+  source_subnetwork_ip_ranges_to_nat = "ALL_SUBNETWORKS_ALL_IP_RANGES"
+}`);
+ if(t.cmek)o.push(`
+resource "google_kms_key_ring" "ring" {
+  name     = "${n}-ring"
+  location = "${r}"
+}
+resource "google_kms_crypto_key" "key" {
+  name            = "${n}-key"
+  key_ring        = google_kms_key_ring.ring.id
+  rotation_period = "7776000s" # 90 days
+  lifecycle { prevent_destroy = true }
+}
+# Grant the Cloud Storage service agent encrypt/decrypt on this key before first apply.`);
+ o.push(`
+resource "google_storage_bucket" "data" {
+  name                        = "REPLACE-${n}-data"
+  location                    = "${r}"
+  uniform_bucket_level_access = true
+  public_access_prevention    = "enforced"
+  versioning { enabled = true }${t.cmek?`
+  encryption { default_kms_key_name = google_kms_crypto_key.key.id }`:`
+  # Google-managed encryption only: CMEK disabled`}
+}`);
+ o.push(t.iam?`
+resource "google_service_account" "workload" {
+  account_id = "${n}-workload"
+}
+resource "google_project_iam_member" "scoped" {
+  project = var.project_id
+  role    = "${p.role}" # no owner or editor
+  member  = "serviceAccount:\${google_service_account.workload.email}"
+}`:`
+# WARNING: broad role below. Replace with a scoped role before apply.
+resource "google_project_iam_member" "broad" {
+  project = var.project_id
+  role    = "roles/editor"
+  member  = "serviceAccount:WORKLOAD_SA_EMAIL"
+}`);
+ if(t.armor)o.push(`
+resource "google_compute_security_policy" "waf" {
+  name = "${n}-waf"
+  rule {
+    action   = "deny(403)"
+    priority = 1000
+    match { expr { expression = "evaluatePreconfiguredExpr('sqli-v33-stable') || evaluatePreconfiguredExpr('xss-v33-stable')" } }
+    description = "Block SQLi and XSS"
+  }
+  rule {
+    action   = "allow"
+    priority = 2147483647
+    match {
+      versioned_expr = "SRC_IPS_V1"
+      config { src_ip_ranges = ["*"] }
+    }
+    description = "Default allow"
+  }
+}`);
+ return o.join('\n');
+}
+const Sel=(id,label,val,opts,on)=>h('label',{className:'flex flex-col gap-1',htmlFor:id},h('span',{className:'lbl'},label),h('select',{id,value:val,className:'field',onChange:e=>on(e.target.value)},opts.map(([v,l])=>h('option',{key:v,value:v},l))));
+
+function App(){
+ const [s,setS]=useState(START),[tab,setTab]=useState(0),[chk,setChk]=useState([0,0,0,0]),[msg,setMsg]=useState(''),ref=useRef();
+ const set=(k,v)=>setS(o=>({...o,[k]:v})),sc=useMemo(()=>score(s),[s]),code=useMemo(()=>gen(s),[s]);
+ const col=sc.total>=80?'var(--good)':sc.total>=55?'var(--warn)':'var(--bad)',lvl=sc.total>=80?'Strong':sc.total>=55?'Needs hardening':'High risk';
+ const fb=()=>{try{const r=document.createRange();r.selectNodeContents(ref.current);const g=getSelection();g.removeAllRanges();g.addRange(r)}catch(e){}setMsg('Selected: press Ctrl/Cmd+C')};
+ const copy=()=>{try{navigator.clipboard.writeText(code).then(()=>setMsg('Copied main.tf'),fb)}catch(e){fb()}setTimeout(()=>setMsg(''),2600)};
+ const demo=k=>{setS(DEMOS[k]);setChk([0,0,0,0])};
+ const done=chk.filter(Boolean).length;
+ const inputs=h('div',{className:'card p-4 flex flex-col gap-4 lg:col-span-3'},
+  h('div',{className:'grid sm:grid-cols-2 gap-3'},
+   Sel('profile','Workload profile',s.profile,Object.entries(PROFILES).map(([k,v])=>[k,v.name]),v=>set('profile',v)),
+   Sel('region','GCP region',s.region,Object.entries(REGIONS).map(([k,v])=>[k,v.label]),v=>set('region',v))),
+  h('p',{className:'muted text-sm'},PROFILES[s.profile].note+' '+REGIONS[s.region].note),
+  h('div',{className:'flex flex-col gap-2'},h('span',{className:'lbl'},'Network mode'),
+   h('div',{className:'flex flex-wrap gap-2'},[['vpc','Private VPC + Cloud NAT'],['vpcsc','VPC Service Controls Perimeter']].map(([k,l])=>h('button',{key:k,className:'btn'+(s.net===k?' on':''),'aria-pressed':s.net===k,onClick:()=>set('net',k)},l)))),
+  h('div',{className:'flex flex-col gap-2'},h('span',{className:'lbl'},'Cloud security toggles'),
+   TOGGLES.map(([k,l,d])=>h('button',{key:k,role:'switch','aria-checked':!!s.t[k],className:'row',onClick:()=>setS(o=>({...o,t:{...o.t,[k]:o.t[k]?0:1}}))},
+    h('span',{className:'sw'}),h('span',{className:'flex flex-col'},h('span',{className:'text-sm font-semibold'},l),h('span',{className:'muted text-xs'},d))))));
+ const result=h('div',{className:'card p-4 flex flex-col gap-4 lg:col-span-2'},
+  h('div',{className:'flex items-center gap-4'},
+   h('svg',{viewBox:'0 0 120 120',width:128,height:128,role:'img','aria-label':'Readiness score '+sc.total+' of 100',style:{flex:'none'}},
+    h('circle',{cx:60,cy:60,r:52,fill:'none',stroke:'var(--line)',strokeWidth:10}),
+    h('circle',{cx:60,cy:60,r:52,fill:'none',stroke:col,strokeWidth:10,strokeLinecap:'round',strokeDasharray:(sc.total/100*326.7)+' 326.7',transform:'rotate(-90 60 60)'}),
+    h('text',{x:60,y:66,textAnchor:'middle',fontSize:30,fontWeight:700,fill:'var(--fg)',style:{fontFamily:'Space Grotesk,sans-serif'}},sc.total)),
+   h('div',null,h('div',{className:'lbl'},'Security & cost readiness'),h('div',{className:'display text-xl font-bold',style:{color:col}},lvl),h('div',{className:'muted text-xs'},'Configuration coverage, not a compliance certification.'))),
+  h('div',{className:'flex flex-col gap-2'},sc.parts.map(([l,v,m])=>h('div',{key:l},h('div',{className:'flex justify-between text-xs'},h('span',null,l),h('span',{className:'mono'},v+'/'+m)),h('div',{style:{height:6,borderRadius:6,background:'var(--line)'}},h('div',{style:{height:6,borderRadius:6,width:(v/m*100)+'%',background:'var(--sky)'}}))))),
+  h('div',null,h('div',{className:'lbl mb-2'},'Gaps for this profile'),
+   sc.gaps.length?h('div',{className:'flex flex-wrap gap-2'},sc.gaps.map(g=>h('span',{key:g,className:'pill bad'},'Missing: '+NAMES[g]))):h('span',{className:'text-sm',style:{color:'var(--good)'}},'All profile-required controls are enabled.')));
+ const hcl=h('div',{className:'card p-4 flex flex-col gap-3'},
+  h('div',{className:'flex flex-wrap items-center justify-between gap-2'},h('h2',{className:'font-bold text-lg'},'main.tf'),h('div',{className:'flex items-center gap-2'},h('span',{className:'muted text-xs','aria-live':'polite'},msg),h('button',{className:'btn on',onClick:copy},'Copy HCL'))),
+  h('pre',{className:'code mono',ref,tabIndex:0},code));
+ const list=h('div',{className:'card p-4 flex flex-col gap-3'},
+  h('div',{className:'flex justify-between items-center'},h('h2',{className:'font-bold text-lg'},'Pre-apply diligence checklist'),h('span',{className:'pill'},done+'/4 complete')),
+  CHECKS.map(([c,d],i)=>h('label',{key:c,className:'row',style:{alignItems:'center'}},h('input',{type:'checkbox',id:'chk'+i,checked:!!chk[i],onChange:()=>setChk(x=>x.map((v,j)=>j===i?(v?0:1):v)),style:{accentColor:'var(--sky)',width:18,height:18}}),h('span',{className:'flex flex-col min-w-0'},h('code',{className:'mono text-xs font-medium',style:{overflowWrap:'anywhere'}},c),h('span',{className:'muted text-xs'},d)))),
+  h('p',{className:'text-xs',style:{color:done===4&&!sc.gaps.length?'var(--good)':'var(--muted)'}},done===4?(sc.gaps.length?'Checklist done, but profile gaps remain.':'Ready for a reviewed apply.'):'Complete all four before running terraform apply.'));
+ return h('div',{className:'wrap flex flex-col gap-4'},
+  h('header',null,h('div',{className:'lbl'},'Infrastructure as code · Google Cloud'),h('h1',{className:'display text-2xl sm:text-3xl font-bold'},'GCP & Terraform Zero-Trust Landing Zone Planner')),
+  h('div',{className:'banner p-4 flex flex-col gap-1',role:'note'},h('strong',{className:'text-sm',style:{color:'var(--warn)'}},'Security diligence before you commit'),
+   h('p',{className:'text-sm'},'Never commit GCP service account JSON keys or Terraform ',h('code',{className:'mono'},'.tfstate'),' files to Git. Authenticate with Workload Identity Federation and keep state in a remote, encrypted, versioned GCS bucket. Add ',h('code',{className:'mono'},'*.tfstate*'),', ',h('code',{className:'mono'},'.terraform/'),' and ',h('code',{className:'mono'},'*-key.json'),' to .gitignore.')),
+  h('div',{className:'flex flex-wrap items-center gap-2'},h('span',{className:'lbl'},'Quick demos'),h('button',{className:'btn demo',onClick:()=>demo('hipaa')},'HIPAA-Aligned GCP Enclave'),h('button',{className:'btn demo',onClick:()=>demo('nonprofit')},'Nonprofit Cloud Hub')),
+  h('div',{role:'tablist',className:'flex gap-1 overflow-x-auto',style:{borderBottom:'1px solid var(--line)'}},['Architecture & Guardrails','Generated Terraform HCL & Audit'].map((l,i)=>h('button',{key:l,role:'tab',className:'tab','aria-selected':tab===i,onClick:()=>setTab(i),style:{whiteSpace:'nowrap'}},l))),
+  tab===0?h('div',{className:'grid lg:grid-cols-5 gap-4'},inputs,result):h('div',{className:'flex flex-col gap-4'},hcl,list),
+  h('p',{className:'muted text-xs'},'Runs fully in the browser with no external APIs. Generated HCL is a starting point: replace placeholders, then run the checklist.'));
+}
+ReactDOM.createRoot(document.getElementById('root')).render(h(App));
+</script>
+
+</body></html>
