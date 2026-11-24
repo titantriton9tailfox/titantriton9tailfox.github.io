@@ -1,0 +1,306 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Rocky Linux 9 & Ansible CIS Hardening Configurator</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap">
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@babel/standalone@7.26.4/babel.min.js"></script>
+<style>
+  /* Layout: one terminal-style column. Score strip stays above the two tabs. */
+  :root { color-scheme: dark; --bg: #080e1a; --fg: #cbd5e1; }
+  body {
+    background: var(--bg); color: var(--fg);
+    font-family: 'JetBrains Mono', ui-monospace, Menlo, Consolas, monospace;
+    padding-block: 20px;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+  }
+  :focus-visible { outline: 2px solid #22d3ee; outline-offset: 2px; }
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo, useRef } = React;
+const cx = (...a) => a.filter(Boolean).join(' ');
+
+const ENVS = {
+  clinic: { label: 'Healthcare Clinic Node', tag: 'HIPAA', note: 'ePHI host. Audit logging is expected under HIPAA 164.312(b).' },
+  nonprofit: { label: 'Nonprofit Web/DB Server', tag: 'NONPROFIT', note: 'Public web and database tier. Limit SSH to admin networks.' },
+  saas: { label: 'Regulated SaaS Host', tag: 'SOC2', note: 'Customer data host. Pair these controls with central log shipping.' },
+};
+// key, name, description, score points
+const TOGGLES = [
+  ['root', 'Disable Root SSH Login', 'PermitRootLogin no', 20],
+  ['fw', 'Enable Firewalld & Fail2Ban', 'Custom SSH port allowed, default ssh service removed, sshd jail', 20],
+  ['se', 'Enforce SELinux Enforcing Mode', 'Targeted policy set to enforcing', 20],
+  ['audit', 'Enable Auditd Compliance Logging', 'Watches on passwd, shadow, sudoers and sshd_config', 15],
+];
+const CHECKS = (p) => [
+  ['lint', 'ansible-lint', 'ansible-lint rocky9-cis-hardening.yml'],
+  ['dry', '--check dry run', 'ansible-playbook -i inventory.ini rocky9-cis-hardening.yml --check --diff --ask-vault-pass'],
+  ['ssh', 'SSH key test', `ssh -p ${p} -i ~/.ssh/id_ed25519 -o PasswordAuthentication=no admin@staging-host`],
+  ['snap', 'Rollback snapshot', 'virsh snapshot-create-as rocky9-staging pre-cis-hardening  # or your hypervisor equivalent'],
+];
+
+const score = (s) => 10 + (s.level === 2 ? 15 : 10) + TOGGLES.reduce((n, t) => n + (s[t[0]] ? t[3] : 0), 0);
+
+const buildYaml = (s) => {
+  const e = ENVS[s.env];
+  return [
+`---
+# rocky9-cis-hardening.yml | ${e.label} | CIS Level ${s.level}
+# Run on a staging VM snapshot first. Keep vault secrets out of this file.
+- name: Rocky Linux 9 CIS hardening
+  hosts: rocky9_targets
+  become: true
+  vars:
+    ssh_port: ${s.port}
+    compliance_profile: ${e.tag}
+  tasks:
+    - name: Harden sshd (key-only auth, custom port)
+      ansible.builtin.lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^#?{{ item.key }} '
+        line: '{{ item.key }} {{ item.value }}'
+        validate: /usr/sbin/sshd -t -f %s
+      loop:
+        - { key: Port, value: '{{ ssh_port }}' }
+        - { key: PasswordAuthentication, value: 'no' }
+        - { key: MaxAuthTries, value: '4' }${s.root ? `
+        - { key: PermitRootLogin, value: 'no' }` : ''}
+      notify: Restart sshd
+
+    - name: Install SELinux management tools
+      ansible.builtin.dnf:
+        name: policycoreutils-python-utils
+        state: present
+    - name: Label custom SSH port for SELinux
+      community.general.seport:
+        ports: '{{ ssh_port }}'
+        proto: tcp
+        setype: ssh_port_t
+        state: present`,
+s.se ? `
+    - name: Enforce SELinux
+      ansible.posix.selinux:
+        policy: targeted
+        state: enforcing` : `
+    # SELinux mode not managed by this run`,
+s.fw ? `
+    - name: Install firewalld, EPEL and fail2ban
+      ansible.builtin.dnf:
+        name: [firewalld, epel-release, fail2ban]
+        state: present
+    - name: Enable firewalld
+      ansible.builtin.service: { name: firewalld, enabled: true, state: started }
+    - name: Allow SSH on the custom port
+      ansible.posix.firewalld: { port: '{{ ssh_port }}/tcp', permanent: true, immediate: true, state: enabled }
+    - name: Remove the default ssh service
+      ansible.posix.firewalld: { service: ssh, permanent: true, immediate: true, state: disabled }
+    - name: Configure the fail2ban sshd jail
+      ansible.builtin.copy:
+        dest: /etc/fail2ban/jail.d/sshd.local
+        mode: '0644'
+        content: |
+          [sshd]
+          enabled = true
+          port = {{ ssh_port }}
+          maxretry = 4
+          bantime = 1h
+    - name: Enable fail2ban
+      ansible.builtin.service: { name: fail2ban, enabled: true, state: started }` : `
+    # firewalld and fail2ban not selected: open {{ ssh_port }}/tcp elsewhere`,
+s.audit ? `
+    - name: Install auditd
+      ansible.builtin.dnf: { name: audit, state: present }
+    - name: Write audit watch rules
+      ansible.builtin.copy:
+        dest: /etc/audit/rules.d/50-cis.rules
+        mode: '0640'
+        content: |
+          -w /etc/passwd -p wa -k {{ compliance_profile | lower }}_identity
+          -w /etc/shadow -p wa -k {{ compliance_profile | lower }}_identity
+          -w /etc/sudoers -p wa -k {{ compliance_profile | lower }}_privilege
+          -w /etc/ssh/sshd_config -p wa -k {{ compliance_profile | lower }}_sshd${s.level === 2 ? `
+          -w /var/log/lastlog -p wa -k {{ compliance_profile | lower }}_logins` : ''}
+    - name: Enable auditd and load rules
+      ansible.builtin.service: { name: auditd, enabled: true, state: started }
+    - name: Load audit rules
+      ansible.builtin.command: augenrules --load
+      changed_when: false` : `
+    # auditd not selected: no compliance logging configured`,
+s.level === 2 ? `
+    - name: Apply Level 2 kernel controls
+      ansible.posix.sysctl: { name: '{{ item.k }}', value: '{{ item.v }}', sysctl_set: true, reload: true }
+      loop:
+        - { k: fs.suid_dumpable, v: '0' }
+        - { k: kernel.randomize_va_space, v: '2' }
+        - { k: net.ipv4.conf.all.accept_redirects, v: '0' }
+    - name: Disable USB storage
+      ansible.builtin.copy:
+        dest: /etc/modprobe.d/usb-storage.conf
+        mode: '0644'
+        content: install usb-storage /bin/false
+    - name: Install AIDE file integrity checker
+      ansible.builtin.dnf: { name: aide, state: present }` : '',
+`
+  handlers:
+    - name: Restart sshd
+      ansible.builtin.service: { name: sshd, state: restarted }`,
+  ].join('\n');
+};
+
+const Lbl = ({ children }) => <div className="text-xs uppercase tracking-widest text-slate-500 mb-2">{children}</div>;
+
+function Seg({ label, value, opts, onChange }) {
+  return (
+    <div role="radiogroup" aria-label={label} className="flex gap-2 flex-wrap">
+      {opts.map(([v, t]) => (
+        <button key={v} role="radio" aria-checked={value === v} onClick={() => onChange(v)}
+          className={cx('px-3 py-2 rounded border text-sm', value === v ? 'border-cyan-400 bg-cyan-400/10 text-cyan-300' : 'border-slate-700 text-slate-400 hover:border-slate-500')}>{t}</button>
+      ))}
+    </div>
+  );
+}
+
+const DEMOS = [
+  ['HIPAA-Ready Clinic Server', { env: 'clinic', level: 2, port: 2222, root: true, fw: true, se: true, audit: true }],
+  ['Zero-Trust Nonprofit Bastion', { env: 'nonprofit', level: 2, port: 2200, root: true, fw: true, se: true, audit: true }],
+];
+
+function App() {
+  const [tab, setTab] = useState(0);
+  const [s, setS] = useState({ env: 'nonprofit', level: 1, port: 2222, root: true, fw: true, se: false, audit: false });
+  const [done, setDone] = useState({});
+  const [copied, setCopied] = useState('');
+  const preRef = useRef(null);
+  const set = (k, v) => setS((o) => ({ ...o, [k]: v }));
+  const sc = score(s);
+  const yaml = useMemo(() => buildYaml(s), [s]);
+  const env = ENVS[s.env];
+  const tone = sc >= 90 ? { t: 'text-emerald-400', b: 'bg-emerald-400', l: 'Hardened' }
+    : sc >= 70 ? { t: 'text-cyan-300', b: 'bg-cyan-400', l: 'Good baseline' }
+    : sc >= 50 ? { t: 'text-amber-300', b: 'bg-amber-400', l: 'Partial coverage' }
+    : { t: 'text-rose-400', b: 'bg-rose-400', l: 'Exposed' };
+  const off = TOGGLES.filter((t) => !s[t[0]]).map((t) => t[1]);
+  const checks = CHECKS(s.port);
+  const n = checks.filter((c) => done[c[0]]).length;
+
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(yaml); setCopied('Copied'); }
+    catch (e) {
+      const r = document.createRange(); r.selectNodeContents(preRef.current);
+      const sel = window.getSelection(); sel.removeAllRanges(); sel.addRange(r); setCopied('Selected: press Ctrl+C');
+    }
+    setTimeout(() => setCopied(''), 2500);
+  };
+
+  return (
+    <div className="max-w-4xl mx-auto space-y-4 text-sm">
+      <div className="border border-amber-500/40 bg-amber-500/10 text-amber-100 rounded p-3 text-xs leading-relaxed">
+        <b className="text-amber-300">Governance check.</b> Test every generated playbook on a staging VM snapshot before it touches production.
+        Never hardcode SSH private keys or vault passwords in plain text. Use ansible-vault with <code>--ask-vault-pass</code> or a vault password file kept outside the repo, and load keys through ssh-agent.
+      </div>
+      <header>
+        <h1 className="text-xl sm:text-2xl font-bold text-emerald-400"><span className="text-cyan-400">$ </span>Rocky Linux 9 &amp; Ansible CIS Hardening Configurator</h1>
+        <p className="text-slate-400 text-xs mt-1">Pick a profile and controls, then copy the playbook and run the checklist.</p>
+      </header>
+
+      <section className="border border-slate-800 bg-slate-900 rounded p-4 grid gap-4 sm:grid-cols-[auto_1fr_auto] sm:items-center">
+        <div>
+          <div className="text-xs uppercase tracking-widest text-slate-500">Hardening score</div>
+          <div className={cx('text-5xl font-bold tabular-nums', tone.t)}>{sc}<span className="text-lg text-slate-500">/100</span></div>
+        </div>
+        <div className="min-w-0">
+          <div role="meter" aria-label="Hardening score" aria-valuemin={0} aria-valuemax={100} aria-valuenow={sc} className="h-3 bg-slate-800 rounded overflow-hidden">
+            <div className={cx('h-full transition-all', tone.b)} style={{ width: sc + '%' }} />
+          </div>
+          <p className="mt-2 text-xs text-slate-400">
+            <span className={tone.t}>{tone.l}.</span> {off.length ? 'Open gaps: ' + off.join(', ') + '.' : 'All four controls enabled.'}
+            {s.level === 1 && ' Level 2 adds kernel, USB-storage and AIDE tasks.'}
+          </p>
+        </div>
+        <div className="flex flex-wrap sm:flex-col gap-2">
+          {DEMOS.map(([name, cfg]) => (
+            <button key={name} onClick={() => setS(cfg)} className="text-xs px-3 py-2 rounded border border-cyan-500/50 text-cyan-300 hover:bg-cyan-500/10 text-left">{name}</button>
+          ))}
+        </div>
+      </section>
+
+      <div role="tablist" className="flex flex-wrap border-b border-slate-800">
+        {['Server Profile & Controls', 'Generated Ansible YAML & Audit'].map((t, i) => (
+          <button key={t} role="tab" aria-selected={tab === i} onClick={() => setTab(i)}
+            className={cx('px-4 py-2 text-xs sm:text-sm border-b-2 -mb-px', tab === i ? 'border-emerald-400 text-emerald-300' : 'border-transparent text-slate-500 hover:text-slate-300')}>{t}</button>
+        ))}
+      </div>
+
+      {tab === 0 ? (
+        <div className="grid gap-5 md:grid-cols-2">
+          <div className="space-y-5 min-w-0">
+            <div>
+              <Lbl>Target environment</Lbl>
+              <select id="env" value={s.env} onChange={(e) => set('env', e.target.value)} className="w-full bg-slate-900 border border-slate-700 rounded px-3 py-2 text-slate-200">
+                {Object.entries(ENVS).map(([k, v]) => <option key={k} value={k}>{v.label}</option>)}
+              </select>
+              <p className="text-xs text-slate-500 mt-2">{env.note}</p>
+            </div>
+            <div><Lbl>CIS hardening level</Lbl><Seg label="CIS level" value={s.level} opts={[[1, 'Level 1 Server'], [2, 'Level 2 High-Security']]} onChange={(v) => set('level', v)} /></div>
+            <div><Lbl>SSH port</Lbl><Seg label="SSH port" value={s.port} opts={[[2222, '2222'], [2200, '2200']]} onChange={(v) => set('port', v)} /></div>
+          </div>
+          <div className="min-w-0">
+            <Lbl>Security controls</Lbl>
+            <div className="space-y-2">
+              {TOGGLES.map(([k, name, desc, pts]) => (
+                <button key={k} role="switch" aria-checked={s[k]} onClick={() => set(k, !s[k])}
+                  className={cx('w-full flex items-center gap-3 text-left p-3 rounded border', s[k] ? 'border-emerald-500/50 bg-emerald-500/5' : 'border-slate-800 bg-slate-900')}>
+                  <span className={cx('w-9 h-5 rounded-full p-0.5 shrink-0 transition-colors', s[k] ? 'bg-emerald-500' : 'bg-slate-700')}>
+                    <span className={cx('block w-4 h-4 rounded-full bg-slate-950 transition-transform', s[k] && 'translate-x-4')} />
+                  </span>
+                  <span className="min-w-0 flex-1"><span className="block text-slate-200">{name}</span><span className="block text-xs text-slate-500">{desc}</span></span>
+                  <span className="text-xs text-slate-500 tabular-nums">+{pts}</span>
+                </button>
+              ))}
+            </div>
+            {s.env === 'clinic' && !s.audit && <p className="text-xs text-amber-300 mt-3">Healthcare nodes should keep auditd on for HIPAA audit controls.</p>}
+          </div>
+        </div>
+      ) : (
+        <div className="grid gap-5 lg:grid-cols-[3fr_2fr]">
+          <div className="min-w-0 border border-slate-800 rounded bg-slate-900">
+            <div className="flex items-center justify-between gap-2 px-3 py-2 border-b border-slate-800">
+              <span className="text-xs text-cyan-300 truncate">rocky9-cis-hardening.yml</span>
+              <button onClick={copy} className="text-xs px-3 py-1 rounded border border-emerald-500/60 text-emerald-300 hover:bg-emerald-500/10 shrink-0">{copied || 'Copy YAML'}</button>
+            </div>
+            <pre ref={preRef} className="p-3 text-xs leading-5 overflow-auto max-h-[30rem]">
+              {yaml.split('\n').map((l, i) => (
+                <div key={i} className={l.trim().startsWith('#') ? 'text-slate-500' : l.includes('- name:') ? 'text-emerald-300' : 'text-slate-300'}>{l || ' '}</div>
+              ))}
+            </pre>
+          </div>
+          <div className="min-w-0">
+            <Lbl>Pre-deployment verification ({n}/4)</Lbl>
+            <ul className="space-y-2">
+              {checks.map(([k, t, c]) => (
+                <li key={k} className="border border-slate-800 bg-slate-900 rounded p-3">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input id={'chk-' + k} type="checkbox" checked={!!done[k]} onChange={() => setDone((d) => ({ ...d, [k]: !d[k] }))} className="accent-emerald-500 w-4 h-4" />
+                    <span className={cx(done[k] ? 'line-through text-slate-500' : 'text-slate-200')}>{t}</span>
+                  </label>
+                  <code className="block mt-2 text-xs text-cyan-300 break-all bg-slate-950 rounded px-2 py-1">{c}</code>
+                </li>
+              ))}
+            </ul>
+            <p className={cx('mt-3 text-xs', n === 4 ? 'text-emerald-400' : 'text-slate-500')}>
+              {n === 4 ? 'All checks done. Apply in a maintenance window.' : 'Keep a second SSH session open on the current port while you test the new one.'}
+            </p>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+</script>
+
+</body></html>
