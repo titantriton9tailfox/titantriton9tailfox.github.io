@@ -1,0 +1,183 @@
+<!doctype html><html><head><meta charset=utf8><meta name=viewport content="width=device-width,initial-scale=1,viewport-fit=cover"><style>:root{color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}html{scroll-padding-top:env(safe-area-inset-top,0px)}body{margin:0;padding:0;font:14px -apple-system,BlinkMacSystemFont,sans-serif;background:#fff;color:#000}img{max-width:100%}[hidden]:not([hidden=until-found i]){display:none!important}</style></head><body>
+<title>Grant Readiness & Impact Synthesizer</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=Space+Grotesk:wght@500;700&display=swap">
+<style>
+/* Layout: one centered column; banner on top, builder card below with two tabs; slate surfaces, emerald accent. */
+:root{--bg:#f4f7f6;--card:#fff;--ink:#1e293b;--mute:#64748b;--line:#d9e2de;--em:#047857;--em-soft:#d1fae5;--on-em:#fff;--warn:#b45309;--warn-soft:#fef3c7;--bad:#b91c1c;--head:'Space Grotesk',system-ui,sans-serif;--body:'Inter',system-ui,sans-serif}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0b1210;--card:#121c19;--ink:#e2e8f0;--mute:#94a3b8;--line:#25332e;--em:#34d399;--em-soft:#0f2e24;--on-em:#04201a;--warn:#fbbf24;--warn-soft:#2b2108;--bad:#f87171;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#0b1210;--card:#121c19;--ink:#e2e8f0;--mute:#94a3b8;--line:#25332e;--em:#34d399;--em-soft:#0f2e24;--on-em:#04201a;--warn:#fbbf24;--warn-soft:#2b2108;--bad:#f87171;color-scheme:dark}
+body{background:var(--bg);color:var(--ink);font-family:var(--body);font-size:14px;line-height:1.55}
+.wrap{max-width:56rem;margin:0 auto;padding-block:1.5rem;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px))}
+h1,h2,h3{font-family:var(--head);text-wrap:balance}
+.card{background:var(--card);border:1px solid var(--line);border-radius:10px}
+.lbl{font-size:11px;letter-spacing:.06em;text-transform:uppercase;color:var(--mute);font-weight:600}
+.btn{border:1px solid var(--line);background:var(--card);color:var(--ink);border-radius:8px;padding:.4rem .8rem;font-weight:500;cursor:pointer}
+.btn:hover{border-color:var(--em)}.btn.on{background:var(--em);border-color:var(--em);color:var(--on-em)}
+.btn:focus-visible,select:focus-visible,input:focus-visible,textarea:focus-visible{outline:2px solid var(--em);outline-offset:2px}
+select,input[type=number],textarea{width:100%;background:var(--bg);color:var(--ink);border:1px solid var(--line);border-radius:8px;padding:.45rem .6rem;font:inherit}
+textarea{resize:vertical;font-size:12.5px}
+table{border-collapse:collapse;width:100%;min-width:34rem}th,td{text-align:left;vertical-align:top;padding:.5rem .65rem;border-bottom:1px solid var(--line)}
+th{background:var(--em-soft);color:var(--em);font-family:var(--head);font-size:12px}
+.tn{font-variant-numeric:tabular-nums}
+@media (prefers-reduced-motion:no-preference){.bar{transition:width .35s ease}}
+</style>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.24.7/babel.min.js"></script>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<div id="root"></div>
+<script type="text/babel">
+const { useState, useMemo } = React;
+const FOCUS = ["Veteran Services", "Housing", "Workforce Tech", "Food Security"];
+const BUDGETS = ["<$250K", "$250K–$1M", "$1M+"];
+const FUNDERS = ["Government", "Foundation", "Corporate"];
+const DOCS = [["letter", "501(c)(3) determination letter"], ["audit", "Audited financials"], ["board", "Board roster"]];
+const MODEL = {
+  "Veteran Services": [["Peer navigators", "Accredited claims staff", "Partner referral network"], ["Benefits and claims counseling", "Peer mentoring groups", "Warm referrals to VA and county services"], ["{n} veterans served annually", "Counseling sessions delivered", "Referrals completed"], ["Higher benefit uptake", "Stronger social connection", "Stable long-term support plan"]],
+  "Housing": [["Case managers", "Landlord partnerships", "Rapid-rehousing funds"], ["Housing assessments", "Landlord outreach and matching", "Move-in and retention support"], ["{n} households assisted annually", "Units secured", "Case plans completed"], ["Stable housing at 12 months", "Fewer returns to homelessness", "More stable household income"]],
+  "Workforce Tech": [["Instructors and mentors", "Lab equipment and licenses", "Employer partners"], ["Cohort-based technical training", "Resume and interview coaching", "Employer hiring events"], ["{n} learners trained annually", "Certifications earned", "Employer introductions made"], ["Tech job placements", "Wage gains", "Graduate retention by employers"]],
+  "Food Security": [["Volunteers and drivers", "Cold storage", "Food bank and farm partners"], ["Weekly distributions", "Mobile pantry routes", "Nutrition education"], ["{n} people served annually", "Meals distributed", "Distribution sites operated"], ["Reduced household food insecurity", "Better dietary quality", "Stronger local food access"]],
+};
+const DEMOS = {
+  "Veteran Housing Nonprofit": { focus: "Housing", budget: "$250K–$1M", funder: "Government", clients: 420, d: { letter: true, audit: true, board: true } },
+  "Rural Tech Bootcamp": { focus: "Workforce Tech", budget: "<$250K", funder: "Foundation", clients: 85, d: { letter: true, audit: false, board: true } },
+};
+const DISCLOSURE = "AI-Disclosure: This application draft was prepared with assistance from an AI tool (Claude by Anthropic). All facts, figures, and claims were reviewed and verified by a member of our staff before submission, and the organization takes responsibility for the final content.";
+
+function calc(s) {
+  const docs = (s.d.letter ? 20 : 0) + (s.d.audit ? 15 : 0) + (s.d.board ? 10 : 0);
+  const cap = { "<$250K": 8, "$250K–$1M": 14, "$1M+": 20 }[s.budget];
+  const reach = Math.min(20, Math.round(Math.log10(s.clients + 1) * 7));
+  const fit = s.funder === "Government" ? (s.d.audit ? 15 : 5) : s.funder === "Foundation" ? (s.d.letter ? 15 : 5) : (s.clients >= 100 ? 15 : 9);
+  const total = docs + cap + reach + fit;
+  const gaps = DOCS.filter(([k]) => !s.d[k]).map(([, l]) => l + " not yet on file");
+  if (s.funder === "Corporate" && s.clients < 100) gaps.push("Reach data is thin for a corporate funder; document client counts and outcomes");
+  const band = total >= 80 ? "Submission-ready" : total >= 60 ? "Nearly ready" : "Build capacity first";
+  return { docs, cap, reach, fit, total, gaps, band };
+}
+const fillN = (t, n) => t.replace("{n}", n.toLocaleString());
+const FOOTER = "Human-in-the-Loop Verification Required: a staff member must confirm every figure, claim, and document status against source records before this text is submitted to any funder.";
+
+function summary(s, r) {
+  const m = MODEL[s.focus];
+  const line = (i) => m[i].map((t) => fillN(t, s.clients)).join("; ");
+  return [
+    "GRANT EXECUTIVE SUMMARY (DRAFT)",
+    `Focus area: ${s.focus} | Budget tier: ${s.budget} | Target funder: ${s.funder}`,
+    `Readiness score: ${r.total}/100 (${r.band})`,
+    "",
+    `[Organization Name] proposes a ${s.focus.toLowerCase()} program serving about ${s.clients.toLocaleString()} clients each year. The request is aimed at a ${s.funder.toLowerCase()} funder and is organized around the logic model below.`,
+    "",
+    "Documents on file: " + (DOCS.filter(([k]) => s.d[k]).map(([, l]) => l).join(", ") || "none"),
+    "Gaps to close before submission: " + (r.gaps.length ? r.gaps.join("; ") : "none identified"),
+    "",
+    "Logic model", "Inputs: " + line(0), "Activities: " + line(1), "Outputs: " + line(2), "Outcomes (intended): " + line(3),
+    "", FOOTER,
+  ].join("\n");
+}
+
+function CopyBox({ id, text, rows }) {
+  const [done, setDone] = useState(false);
+  const copy = async () => {
+    try { await navigator.clipboard.writeText(text); setDone(true); setTimeout(() => setDone(false), 1800); }
+    catch (e) { document.getElementById(id)?.select(); }
+  };
+  return (
+    <div className="flex flex-col gap-2">
+      <textarea id={id} readOnly rows={rows} value={text} aria-label="Copyable text" />
+      <button className="btn self-start" onClick={copy}>{done ? "Copied" : "Copy text"}</button>
+    </div>
+  );
+}
+
+function Seg({ value, options, onChange, name }) {
+  return (
+    <div className="flex flex-wrap gap-2" role="group" aria-label={name}>
+      {options.map((o) => <button key={o} className={"btn " + (value === o ? "on" : "")} aria-pressed={value === o} onClick={() => onChange(o)}>{o}</button>)}
+    </div>
+  );
+}
+
+function App() {
+  const [s, setS] = useState(DEMOS["Veteran Housing Nonprofit"]);
+  const [tab, setTab] = useState(0);
+  const r = useMemo(() => calc(s), [s]);
+  const text = useMemo(() => summary(s, r), [s, r]);
+  const set = (k, v) => setS({ ...s, [k]: v });
+  const tone = r.total >= 80 ? "var(--em)" : r.total >= 60 ? "var(--warn)" : "var(--bad)";
+  const m = MODEL[s.focus];
+  return (
+    <div className="wrap flex flex-col gap-4">
+      <header>
+        <h1 className="text-2xl font-bold">Community Nonprofit Grant Readiness &amp; Impact Synthesizer</h1>
+        <p style={{ color: "var(--mute)" }}>Check how ready a program is for a funder, sketch its logic model, and draft a summary for staff review.</p>
+      </header>
+
+      <section className="card p-4 flex flex-col gap-3" style={{ background: "var(--warn-soft)" }} aria-label="Transparency notice">
+        <p><strong style={{ color: "var(--warn)" }}>Do not enter real donor or client PII.</strong> Use counts and general descriptions only. Nothing here is sent anywhere; all scoring runs in your browser.</p>
+        <div><div className="lbl mb-1">AI-disclosure note for grant reviewers</div><CopyBox id="disc" text={DISCLOSURE} rows={3} /></div>
+      </section>
+
+      <div className="flex flex-wrap items-center gap-2">
+        <span className="lbl">Quick demos</span>
+        {Object.keys(DEMOS).map((n) => <button key={n} className="btn" onClick={() => { setS(DEMOS[n]); setTab(1); }}>{n}</button>)}
+      </div>
+
+      <div className="card overflow-hidden">
+        <div className="flex" role="tablist" style={{ borderBottom: "1px solid var(--line)" }}>
+          {["Program & Funder Setup", "Readiness Score & Logic Model"].map((t, i) => (
+            <button key={t} role="tab" aria-selected={tab === i} onClick={() => setTab(i)} className="flex-1 px-3 py-3 font-semibold"
+              style={{ background: tab === i ? "var(--em-soft)" : "transparent", color: tab === i ? "var(--em)" : "var(--mute)", borderBottom: tab === i ? "2px solid var(--em)" : "2px solid transparent", cursor: "pointer" }}>{t}</button>
+          ))}
+        </div>
+
+        {tab === 0 ? (
+          <div className="p-4 grid gap-4 sm:grid-cols-2">
+            <div><label className="lbl" htmlFor="focus">Focus area</label>
+              <select id="focus" value={s.focus} onChange={(e) => set("focus", e.target.value)}>{FOCUS.map((f) => <option key={f}>{f}</option>)}</select></div>
+            <div><label className="lbl" htmlFor="clients">Clients served per year</label>
+              <input id="clients" type="number" min="0" value={s.clients} onChange={(e) => set("clients", Math.max(0, parseInt(e.target.value) || 0))} /></div>
+            <div><div className="lbl mb-1">Annual budget tier</div><Seg name="Budget tier" value={s.budget} options={BUDGETS} onChange={(v) => set("budget", v)} /></div>
+            <div><div className="lbl mb-1">Funder type</div><Seg name="Funder type" value={s.funder} options={FUNDERS} onChange={(v) => set("funder", v)} /></div>
+            <fieldset className="sm:col-span-2"><legend className="lbl mb-1">Documents on file</legend>
+              <div className="flex flex-wrap gap-x-6 gap-y-2">
+                {DOCS.map(([k, l]) => <label key={k} className="flex items-center gap-2" htmlFor={"d-" + k}>
+                  <input id={"d-" + k} type="checkbox" checked={s.d[k]} onChange={(e) => set("d", { ...s.d, [k]: e.target.checked })} style={{ accentColor: "var(--em)" }} />{l}</label>)}
+              </div></fieldset>
+            <div className="sm:col-span-2"><button className="btn on" onClick={() => setTab(1)}>See readiness score</button></div>
+          </div>
+        ) : (
+          <div className="p-4 flex flex-col gap-5">
+            <div className="flex flex-wrap items-center gap-5">
+              <div><div className="lbl">Grant readiness</div><div className="tn text-5xl font-bold" style={{ fontFamily: "var(--head)", color: tone }}>{r.total}<span className="text-lg" style={{ color: "var(--mute)" }}>/100</span></div></div>
+              <div className="flex-1" style={{ minWidth: "12rem" }}>
+                <div className="font-semibold" style={{ color: tone }}>{r.band}</div>
+                <div className="rounded-full overflow-hidden my-1" style={{ background: "var(--line)", height: 10 }} role="img" aria-label={"Score " + r.total + " out of 100"}>
+                  <div className="bar h-full" style={{ width: r.total + "%", background: tone }} /></div>
+                <div className="tn flex flex-wrap gap-x-4" style={{ color: "var(--mute)", fontSize: 12 }}>
+                  <span>Documents {r.docs}/45</span><span>Capacity {r.cap}/20</span><span>Reach {r.reach}/20</span><span>Funder fit {r.fit}/15</span></div>
+              </div>
+            </div>
+            <p style={{ color: "var(--mute)", fontSize: 12 }}>Illustrative heuristic for planning, not any funder's actual rubric. {r.gaps.length ? "Gaps: " + r.gaps.join("; ") + "." : "No document gaps found."}</p>
+
+            <div><h2 className="text-base font-bold mb-2">Logic model: {s.focus}</h2>
+              <div className="overflow-x-auto card"><table>
+                <thead><tr>{["Inputs", "Activities", "Outputs", "Outcomes"].map((h, i) => <th key={h}>{h}{i < 3 ? " →" : ""}</th>)}</tr></thead>
+                <tbody>{[0, 1, 2].map((row) => <tr key={row}>{m.map((col, c) => <td key={c}>{fillN(col[row], s.clients)}</td>)}</tr>)}</tbody>
+              </table></div></div>
+
+            <div><h2 className="text-base font-bold mb-2">Grant executive summary</h2>
+              <CopyBox id="sum" text={text} rows={14} />
+              <p className="mt-2 p-3 rounded-lg font-semibold" style={{ background: "var(--warn-soft)", color: "var(--warn)" }}>⚠ Human-in-the-Loop Verification Required: a staff member must confirm every figure, claim, and document status before submission.</p></div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+
+</body></html>
